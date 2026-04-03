@@ -5,9 +5,9 @@ A mobile-first fitness tracker web app for managing weekly workout plans, meal t
 ## How It Works
 
 1. **Each week**: User asks Claude to generate a weekly plan JSON (using the format in `JSON_FORMAT.md`)
-2. **Import**: User pastes the JSON into the app via the Import button
-3. **During the week**: User logs workouts (weight/reps per set), checks off meals, checks off grocery items
-4. **End of week**: User clicks Export to copy workout data to clipboard, pastes it into Claude
+2. **Import**: User pastes the JSON into the app via the Home tab's Import button
+3. **During the week**: User logs workouts (weight/reps per set, RPE, daily notes), checks off meals, checks off grocery items, logs bodyweight and body fat
+4. **End of week**: User clicks Export on the Home tab to copy week data to clipboard, pastes it into Claude
 5. **Claude uses the export** to track progression and generate the next week's plan with appropriate weight increases
 
 ## Tech Stack
@@ -15,109 +15,145 @@ A mobile-first fitness tracker web app for managing weekly workout plans, meal t
 - **Vanilla HTML/CSS/JS** — no framework, no build step, no dependencies
 - **ES Modules** — native browser module system, files import from each other
 - **Chart.js** (CDN) — for progress charts on the dashboard
-- **Supabase** (CDN, optional) — for cloud database + auth when deployed
-- **Netlify** — static file hosting
+- **Cloudflare Pages** — static file hosting with auto-deploy from GitHub
+- **Cloudflare D1** (SQLite) — cloud database for production data persistence
+- **Cloudflare Pages Functions** — serverless API endpoints at `/api/*`
+- **Cloudflare Access** — Zero Trust authentication (Google OAuth), protects the entire site
 
 ## Dual Mode
 
-The app runs in two modes based on whether Supabase is configured in `js/config.js`:
+The app auto-detects its mode by checking if `/api/me` responds:
 
-- **Demo mode** (`config.js` has placeholder values): All data stored in localStorage. No auth required. Works by opening `app.html` directly or via any static server.
-- **Production mode** (`config.js` has real Supabase credentials): Data stored in Supabase PostgreSQL. Google OAuth or email magic link auth required. Login page at `index.html`, app at `app.html`.
+- **Demo mode** (local dev, no API): All data stored in localStorage. No auth required. Works by running `npx serve .` and opening `app.html`.
+- **Production mode** (Cloudflare Pages with D1): Data stored in Cloudflare D1 SQLite. Cloudflare Access handles Google OAuth login. User identity from JWT header.
+
+The `IS_PRODUCTION` flag from `js/config.js` controls all branching. Every feature has both a D1 path and a localStorage path.
 
 ## File Structure
 
 ```
-index.html              Login page (Google OAuth + email magic link). Redirects to app.html in demo mode.
-app.html                Main app shell. Top bar, content area, bottom tab bar, modals.
-netlify.toml            Netlify redirects and security headers.
+index.html              Redirects to app.html
+app.html                Main app shell. Content area, bottom tab bar, modals.
+manifest.json           PWA manifest for Add to Home Screen
+schema.sql              D1 database schema (SQLite)
+wrangler.toml           Cloudflare config (D1 binding)
 JSON_FORMAT.md          Complete specification of the weekly plan JSON format.
 CLAUDE.md               This file.
 
+icons/
+  icon.svg              App icon (blue with bar chart)
+
 css/
-  base.css              CSS variables, reset, typography, system font stack
-  layout.css            Top bar, tab bar, content area, day pills, login page layout
+  base.css              CSS variables, reset, typography, system font stack, hidden scrollbars
+  layout.css            Tab bar, content area, day pills, section headers, week nav arrows,
+                        inline week picker modal, scroll fade gradients
   components.css        Cards, badges, modals, buttons, inputs, exercise cards, meal cards,
-                        grocery items, stretch items, rest timers, equipment badges, toasts
-  dashboard.css         Chart containers, stat cards, personal bests grid, bodyweight widget
+                        grocery items, stretch items, rest timers, equipment badges, toasts,
+                        RPE selector, day notes, home tab cards, body metrics widget
+  dashboard.css         Chart containers, stat cards, range pills, exercise stat row,
+                        inline stat headers, personal bests
 
 js/
-  config.js             Supabase URL + anon key constants (placeholder by default)
-  supabase.js           Initializes the Supabase client from config
-  auth.js               Login/logout handlers, session guard, magic link + Google OAuth
-  state.js              Shared app state object + date utility functions
-  router.js             Hash-based tab routing (#workout, #meals, #dashboard)
-  app.js                Entry point — auth guard, init modules, load weeks
+  config.js             Auto-detects production vs demo mode via /api/me
+  auth.js               Cloudflare Access auth — reads user from JWT, signOut via Access logout
+  state.js              Shared app state, date utilities, week picker HTML/nav, week switching
+  router.js             Hash-based tab routing (#home, #workout, #meals, #dashboard)
+  app.js                Entry point — detect mode, load weeks, init modules
+  migrate.js            Versioned data migration system for localStorage schema changes
 
-  weeks.js              Week picker dropdown, load/switch weeks from Supabase or localStorage
+  home.js               Home tab — today's snapshot (workout/meals/weight), week management
+                        (Next Week / This Week / Past Weeks), import button, per-week export
   import.js             Import modal — JSON validation, week creation, demo week management
-  export.js             Export button — copies workout log data as JSON to clipboard
   override.js           Single-day override modal — replace one day's workout or meals
   toast.js              Toast notification system
 
-  workout.js            Workout tab — day pills, exercise cards with expandable set logging,
-                        equipment-aware weight inputs, warm-up/cool-down sub-tabs with
-                        checkable stretches, rest timers, completion tint, replace day button
+  workout.js            Workout tab — day pills with logged-data indicators, exercise cards
+                        with expandable set logging, equipment-aware weight inputs,
+                        warm-up/cool-down sub-tabs with checkable stretches, rest timers,
+                        RPE rating per exercise, daily notes, completion tint,
+                        previous week placeholders, replace day button
   meals.js              Meals tab — day pills with Prep pill (inline grocery checklist),
                         meal cards with expandable recipes, daily macro totals (planned vs eaten),
-                        meal check-off, replace day button
-  grocery.js            Standalone grocery module (currently unused — grocery is inline in meals.js
-                        via the Prep pill, but this file remains for potential Supabase mode use)
+                        meal check-off, bodyweight + body fat input widgets, replace day button
+  bodyweight.js         Bodyweight chart renderer (used by production dashboard)
 
-  dashboard.js          Dashboard tab — exercise progression charts, personal bests grid,
-                        workout completion rates, meal adherence rates (bar charts)
-  bodyweight.js         Bodyweight logging widget + trend chart (used by dashboard)
-  api.js                All Supabase CRUD functions — weekly plans, workout logs, meal checks,
-                        grocery checks, bodyweight logs, dashboard queries
+  dashboard.js          Dashboard tab — bodyweight trend chart with time range pills
+                        (1W/2W/1M/3M/6M/1Y/All), body fat trend chart with range pills,
+                        exercise progression chart with inline stat + PB badge,
+                        Robinhood-style charts (no dots, smooth lines, touch tooltips)
+  api.js                All D1 API client functions using fetch('/api/...')
+  weeks.js              Week loading from D1 for production mode
+
+functions/
+  api/
+    _middleware.js       Auth middleware — extracts user ID from Cloudflare Access JWT
+    me.js               GET /api/me — returns current user info
+    weeks.js             GET/POST /api/weeks — list/create weeks
+    week/[id].js         GET/PUT /api/week/:id — get/update single week
+    workout-logs.js      GET/POST /api/workout-logs — load/upsert workout sets
+    meal-checks.js       GET/POST /api/meal-checks — load/upsert meal checks
+    grocery-checks.js    GET/POST /api/grocery-checks — load/upsert grocery checks
+    bodyweight.js        GET/POST /api/bodyweight — load/upsert bodyweight
+    bodyfat.js           GET/POST /api/bodyfat — load/upsert body fat
+    rpe.js               GET/POST /api/rpe — load/upsert RPE ratings
+    day-notes.js         GET/POST /api/day-notes — load/upsert daily notes
+    stretch-checks.js    GET/POST /api/stretch-checks — load/upsert stretch completion
+    dashboard.js         GET /api/dashboard — exercise names, progression, PBs, completion rates
 ```
 
 ## App Structure
 
-### Three Tabs (bottom nav)
+### Four Tabs (bottom nav)
 
-1. **Workout** — The main tab. Shows the selected day's workout with exercises.
-   - Day pills scroll horizontally, auto-selects today
+1. **Home** — Landing page and week management.
+   - Today's snapshot: current workout, meals eaten, bodyweight + body fat
+   - Weekly Plans section: Next Week, This Week, Past Weeks (collapsible)
+   - Import Week button, per-week Export buttons
+   - Snapshot cards link to Workout/Meals tabs
+
+2. **Workout** — Daily workout logging.
+   - Week nav arrows (prev/next) + tap label for month picker modal
+   - Day pills scroll horizontally with green dot indicators for logged days
+   - Daily notes textarea (energy, soreness, sleep)
    - Each exercise card expands to show set logging inputs (weight + reps)
-   - Weight input labels adapt to equipment type (barbell → "bar total", dumbbell → "per DB", cable-single → "per arm", etc.)
-   - Completed exercises get a green tint
-   - Warm-Up / Workout / Cool-Down sub-tabs appear when stretch data exists
-   - Stretches are checkable with a progress bar
-   - Rest timer info shows between sets and between exercises
-   - "Replace" button allows importing a single-day workout override
+   - Weight input labels adapt to equipment type (barbell/dumbbell/cable/machine/bodyweight)
+   - Previous week's values shown as grayed italic placeholders
+   - RPE selector (6-10 scale) per exercise
+   - Completed exercises get a bright green tint
+   - Warm-Up / Workout / Cool-Down sub-tabs with checkable stretches + progress bar
+   - Rest timer info between sets and between exercises
+   - Failure/AMRAP exercises show "to failure" placeholder
+   - "Replace" button for single-day workout overrides
 
-2. **Meals** — Daily meal tracking with an integrated grocery list.
-   - **Prep pill** (before Mon) shows the grocery checklist inline — no separate grocery tab
+3. **Meals** — Daily meal tracking with integrated grocery list.
+   - Week nav arrows (same as Workout tab)
+   - **Prep pill** (before Mon) shows the grocery checklist inline
+   - Bodyweight + body fat input widgets in the day header
    - Day pills show each day's meals with check-off functionality
-   - Each meal shows macros (cal, protein, carbs, fat)
-   - Daily totals card shows planned vs eaten macros
-   - Meals with a `recipe` field have an expandable recipe view (ingredients, instructions, prep/cook time)
-   - "Replace" button allows importing single-day meal overrides (doesn't affect grocery list)
+   - Daily totals card shows planned vs eaten macros (cal, protein, carbs, fat)
+   - Meals with a `recipe` field have an expandable recipe view
+   - "Replace" button for single-day meal overrides (doesn't affect grocery list)
 
-3. **Dashboard** — Progress tracking across weeks.
-   - Bodyweight logging widget + trend chart
-   - Exercise progression chart (select exercise from dropdown, see max weight over weeks)
-   - Personal bests grid
-   - Workout completion rate (bar chart, last 8 weeks)
-   - Meal adherence rate (bar chart, last 8 weeks)
-
-### Top Bar
-
-- App title
-- Week picker dropdown (shows date range like "March 30 - April 5")
-- Export button (copies week's workout data as JSON to clipboard)
-- Import button (opens modal to paste a full week JSON)
-- Logout button (hidden in demo mode)
+4. **Dashboard** — Progress tracking across weeks.
+   - Bodyweight trend chart with time range pills (1W/2W/1M/3M/6M/1Y/All)
+   - Body fat trend chart with time range pills
+   - Exercise progression chart with dropdown selector
+   - Inline stat: current max weight + week-over-week change + PB badge
+   - Robinhood-style charts (no dots, smooth curves, touch tooltips, axis labels)
+   - Charts always end at today's date
 
 ### Data Flow
 
 ```
-Claude generates JSON → User pastes into Import → App stores in Supabase/localStorage
+Claude generates JSON → User imports on Home tab → App stores in D1/localStorage
                                                          ↓
-User logs workouts (weight/reps) ←→ Supabase/localStorage
-User checks off meals            ←→ Supabase/localStorage
-User checks off grocery items    ←→ Supabase/localStorage
+User logs workouts (weight/reps/RPE/notes) ←→ D1/localStorage
+User checks off meals                     ←→ D1/localStorage
+User checks off grocery items              ←→ D1/localStorage
+User logs bodyweight + body fat            ←→ D1/localStorage
+User checks off warmup/cooldown stretches  ←→ D1/localStorage
                                                          ↓
-User clicks Export → JSON copied to clipboard → User pastes into Claude → Next week's plan
+User clicks Export on Home tab → JSON copied to clipboard → User pastes into Claude → Next week
 ```
 
 ## JSON Format
@@ -125,48 +161,45 @@ User clicks Export → JSON copied to clipboard → User pastes into Claude → 
 See `JSON_FORMAT.md` for the complete specification. Key points:
 
 - `weekStart` must be a Monday in YYYY-MM-DD format
-- Exercise `name` must be consistent across weeks for progress tracking
+- Exercise `name` must be consistent across weeks for progress tracking (case-insensitive matching)
 - `equipment` field determines weight input behavior (barbell, dumbbell, cable, cable-single, machine, machine-single, bodyweight)
 - `warmup`/`cooldown` arrays on workout days enable stretch sub-tabs
 - `recipe` object on meals enables expandable recipe view
 - `tip` field on workout days shows a general daily tip (not exercise-specific)
+- `restBetweenSets` and `restBetweenExercises` fields show rest timer info
+- `reps` field supports "AMRAP" and "failure" for to-failure sets
 - Single-day overrides use the same structure but without `day`/`dayName`
 
-## Supabase Schema (for production)
+## Export Format
 
-Tables: `weekly_plans`, `workout_logs`, `meal_checks`, `grocery_checks`, `bodyweight_logs`
+The export JSON includes:
+- **Body metrics**: current weight, body fat, weekly changes, daily logs
+- **Workout summary**: per-day exercises with logged weight/reps per set, RPE ratings, daily notes
+- **Warmup/cooldown**: stretch completion status
+- **Meal summary**: per-day eaten/skipped meals with calories and protein totals
 
-- All tables use Row Level Security (RLS) scoped to `auth.uid() = user_id`
-- `weekly_plans.plan_data` stores the full JSON as JSONB
+## D1 Database Schema (Production)
+
+Tables: `weekly_plans`, `workout_logs`, `meal_checks`, `grocery_checks`, `bodyweight_logs`, `bodyfat_logs`, `rpe_logs`, `day_notes`, `stretch_checks`
+
+- All data scoped to `user_id` (from Cloudflare Access JWT email)
+- `weekly_plans.plan_data` stores the full JSON as TEXT
 - `workout_logs` has a denormalized `exercise_name` column for dashboard queries
 - All log tables use upsert with unique constraints for idempotent writes
-- RPC function `get_personal_bests(p_user_id)` for the dashboard
+- See `schema.sql` for full schema
 
 ## Data Migration System
 
-The app uses a versioned migration system (`js/migrate.js`) to safely evolve the localStorage schema without breaking existing user data.
-
-**How it works:**
-1. `DATA_VERSION` constant tracks the current schema version
-2. On app load, `runMigrations()` compares stored version to current
-3. If behind, runs each migration function sequentially (v1→v2→v3...)
-4. If a migration fails, it stops and retries next load
-5. Version stored in `hh-data-version` localStorage key
-
-**When to add a migration:**
-- Renaming a localStorage key
-- Changing the structure of stored data
-- Adding required fields to existing data
-- Merging or splitting storage keys
+The app uses a versioned migration system (`js/migrate.js`) for localStorage schema changes in demo mode.
 
 **How to add a migration:**
 1. Increment `DATA_VERSION` in `migrate.js`
 2. Add a function to the `migrations` object keyed by the new version number
-3. The function should read old data, transform it, and write it back
+3. The function reads old data, transforms it, and writes it back
 
 **Never:**
 - Change the meaning of an existing localStorage key without a migration
-- Delete a key that existing code reads without a migration to move the data
+- Delete a key that existing code reads without a migration
 - Change the structure of `hh-weeks` entries without migrating
 
 ## localStorage Schema (Demo Mode)
@@ -184,10 +217,22 @@ The app uses a versioned migration system (`js/migrate.js`) to safely evolve the
 | `hh-bodyweight` | `[{ date, weight }]` | Bodyweight log entries |
 | `hh-bodyfat` | `[{ date, value }]` | Body fat % log entries |
 
+## Deployment
+
+**Hosting**: Cloudflare Pages (auto-deploy from GitHub `master` branch)
+**Database**: Cloudflare D1 (`healthy-habits`, binding name `DB`)
+**Auth**: Cloudflare Access (Zero Trust, Google OAuth, restricted to one email)
+**URL**: healthy-habits.pages.dev
+
 ## Key Conventions
 
 - All dates use Monday as day 0 through Sunday as day 6
 - Week labels auto-generate as "Month Day - Month Day" (e.g. "March 30 - April 5")
-- The app auto-selects today's day on load
+- The app auto-selects the current calendar week on load
 - Meal plans are the same every day of the week unless overridden per-day via `mealOverrides`
 - Grocery list is per-week (not per-day), accessible via the Prep pill in the Meals tab
+- `IS_PRODUCTION` from `config.js` controls all demo/production branching
+- Every feature must have both a D1 API path and a localStorage fallback path
+- Exercise names are compared case-insensitively for progress tracking
+- Scrollbars are hidden globally for native iOS feel
+- All touch targets are minimum 44px for mobile usability
