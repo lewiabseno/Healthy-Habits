@@ -94,13 +94,13 @@
 }
 
 .week-nav-arrow {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: 50%;
   background: var(--accent-light);
   color: var(--accent);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -117,7 +117,7 @@
 }
 
 .week-nav-label {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--accent);
   cursor: pointer;
