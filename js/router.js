@@ -2,8 +2,10 @@ import { state } from './state.js';
 import { renderWorkout } from './workout.js';
 import { renderMeals } from './meals.js';
 import { renderDashboard } from './dashboard.js';
+import { renderHome } from './home.js';
 
 const renderers = {
+  home: renderHome,
   workout: renderWorkout,
   meals: renderMeals,
   dashboard: renderDashboard,
@@ -12,7 +14,7 @@ const renderers = {
 const tabBtns = document.querySelectorAll('.tab-btn');
 const content = document.getElementById('content');
 
-export function initRouter() {
+export async function initRouter() {
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       window.location.hash = btn.dataset.tab;
@@ -20,14 +22,13 @@ export function initRouter() {
   });
 
   window.addEventListener('hashchange', () => navigate());
-  navigate();
+  await navigate();
 }
 
-export function navigate() {
-  let hash = window.location.hash.slice(1) || 'workout';
-  // Redirect old grocery hash to meals
+export async function navigate() {
+  let hash = window.location.hash.slice(1) || 'home';
   if (hash === 'grocery') hash = 'meals';
-  const tab = renderers[hash] ? hash : 'workout';
+  const tab = renderers[hash] ? hash : 'home';
   state.currentTab = tab;
   state.expandedExercise = null;
 
@@ -38,10 +39,10 @@ export function navigate() {
   renderCurrentTab();
 }
 
-export function renderCurrentTab() {
+export async function renderCurrentTab() {
   const renderer = renderers[state.currentTab];
   if (renderer) {
-    renderer(content);
+    await renderer(content);
   }
   content.scrollTop = 0;
 }

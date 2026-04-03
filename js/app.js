@@ -36,8 +36,6 @@ async function init() {
   initImport();
   const { initOverride } = await import('./override.js');
   initOverride();
-  const { initExport } = await import('./export.js');
-  initExport();
   initRouter();
 }
 

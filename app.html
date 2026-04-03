@@ -20,18 +20,6 @@
     <span class="topbar-title">Healthy Habits</span>
     <div class="week-picker" id="weekPicker"></div>
     <div class="topbar-actions">
-      <button class="topbar-btn" id="exportBtn" type="button">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Export
-      </button>
-      <button class="topbar-btn" id="importBtn" type="button">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Import
-      </button>
       <button class="topbar-btn logout" id="logoutBtn" type="button">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
@@ -49,7 +37,13 @@
 
   <!-- Bottom tab bar -->
   <nav class="tabbar">
-    <button class="tab-btn active" data-tab="workout">
+    <button class="tab-btn active" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4m-4 0v-5a1 1 0 011-1h2a1 1 0 011 1v5"/>
+      </svg>
+      <span class="tab-label">Home</span>
+    </button>
+    <button class="tab-btn" data-tab="workout">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <rect x="0" y="9" width="5.5" height="6" rx="2.75"/>
         <rect x="18.5" y="9" width="5.5" height="6" rx="2.75"/>

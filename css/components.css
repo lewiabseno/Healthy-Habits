@@ -484,6 +484,157 @@
   min-height: 44px;
 }
 
+/* Home tab */
+.home-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px 16px;
+}
+
+.home-snap-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  min-height: 56px;
+}
+
+.home-snap-card:active {
+  opacity: 0.8;
+}
+
+.home-snap-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.home-snap-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-snap-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.home-snap-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 1px;
+}
+
+.home-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 8px;
+}
+
+.home-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.home-import-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 36px;
+}
+
+.home-week-list {
+  padding: 0 12px;
+}
+
+.home-week-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 15px;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  margin-bottom: 6px;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  min-height: 54px;
+}
+
+.home-week-row:active {
+  opacity: 0.8;
+}
+
+.home-week-row.current {
+  border: 1.5px solid var(--accent);
+}
+
+.home-week-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-week-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.home-week-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-light);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.home-week-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.home-week-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 32px;
+}
+
+.home-week-btn.export {
+  color: var(--accent);
+  border-color: var(--accent-light);
+}
+
 /* Meal cards */
 .meal-card {
   background: var(--card);

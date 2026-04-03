@@ -12,7 +12,7 @@ const submitBtn = document.getElementById('importSubmit');
 const cancelBtn = document.getElementById('importCancel');
 
 export function initImport() {
-  document.getElementById('importBtn').addEventListener('click', openModal);
+  document.getElementById('importBtn')?.addEventListener('click', openModal);
   cancelBtn.addEventListener('click', closeModal);
   submitBtn.addEventListener('click', handleImport);
   overlay.addEventListener('click', (e) => {
@@ -167,10 +167,17 @@ async function handleImport() {
       }
       localStorage.setItem('hh-weeks', JSON.stringify(weeks));
 
-      // Update state
+      // Update state — keep current week, just refresh the list
       state.weeks = weeks;
-      state.currentPlanId = entry.id;
-      state.currentPlan = json;
+      // If no week was selected, select the new one
+      if (!state.currentPlanId) {
+        state.currentPlanId = entry.id;
+        state.currentPlan = json;
+      }
+      // If overwriting the current week, update its plan data
+      if (state.currentPlanId === entry.id) {
+        state.currentPlan = json;
+      }
       updateWeekPicker();
       showToast('Week imported!', 'success');
       closeModal();
