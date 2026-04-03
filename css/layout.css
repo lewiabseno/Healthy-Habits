@@ -96,19 +96,20 @@
 .week-nav-arrow {
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   border: none;
   border-radius: 50%;
   background: var(--accent-light);
   color: var(--accent);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
   font-family: inherit;
-  line-height: 1;
+  line-height: 36px;
+  text-align: center;
   padding: 0;
+  box-sizing: border-box;
 }
 
 .week-nav-arrow.disabled {
