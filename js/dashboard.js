@@ -107,11 +107,14 @@ function renderDemoDashboard(container) {
     };
 
     function renderBwChart(days) {
+      const today = new Date().toISOString().split('T')[0];
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
       const cutoffStr = cutoff.toISOString().split('T')[0];
-      const filtered = days >= 99999 ? bwData : bwData.filter(d => d.date >= cutoffStr);
-      const chartData = filtered.length > 0 ? filtered : bwData;
+      // Filter: only past/today data, and within the range
+      const allValid = bwData.filter(d => d.date <= today);
+      const filtered = days >= 99999 ? allValid : allValid.filter(d => d.date >= cutoffStr);
+      const chartData = filtered.length > 0 ? filtered : allValid;
 
       const newLabels = chartData.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
       const newData = chartData.map(d => d.weight);
