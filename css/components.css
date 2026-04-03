@@ -180,6 +180,11 @@
   background: var(--card);
 }
 
+.set-input.has-prev::placeholder {
+  color: #b0b0b5;
+  font-style: italic;
+}
+
 .add-set-btn {
   width: 100%;
   margin-top: 4px;

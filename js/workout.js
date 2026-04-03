@@ -5,6 +5,7 @@ import { SUPABASE_URL } from './config.js';
 const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
 
 let logs = {}; // { exerciseIndex: { setIndex: { weight, reps } } }
+let prevLogs = {}; // previous week's logs for placeholders
 let debounceTimers = {};
 let pillScrollPos = null;
 let isInitialRender = true;
@@ -45,7 +46,7 @@ export async function renderWorkout(container) {
 
   const workout = dayMap[state.currentDay];
 
-  // Load logs
+  // Load logs + previous week's logs for placeholders
   if (workout) {
     if (isConfigured && state.currentPlanId) {
       const { loadWorkoutLogs } = await import('./api.js');
@@ -53,6 +54,7 @@ export async function renderWorkout(container) {
     } else {
       loadLocalDayLogs(state.currentDay);
     }
+    loadPreviousLogs(state.currentDay);
   }
 
   const pillsHtml = dayNames.map((name, i) => {
@@ -268,6 +270,43 @@ async function loadRemoteLogs(loadWorkoutLogs, dayIndex) {
   }
 }
 
+function loadPreviousLogs(dayIndex) {
+  prevLogs = {};
+  const allLogData = getLocalLogs();
+  const currentWorkout = (state.currentPlan?.workouts || []).find(w => w.day === dayIndex);
+  if (!currentWorkout) return;
+
+  // Get all weeks sorted by date descending, skip current week
+  const sortedWeeks = [...state.weeks]
+    .filter(w => (w.id || w.weekStart) !== state.currentPlanId)
+    .sort((a, b) => (b.weekStart || b.id).localeCompare(a.weekStart || a.id));
+
+  // For each exercise in current workout, find most recent logged data by name
+  (currentWorkout.exercises || []).forEach((ex, exIdx) => {
+    for (const week of sortedWeeks) {
+      const weekId = week.id || week.weekStart;
+      const weekPlan = week.planData;
+      if (!weekPlan?.workouts) continue;
+
+      // Find matching exercise by name in any day of that week
+      for (const wd of weekPlan.workouts) {
+        const matchExIdx = (wd.exercises || []).findIndex(e => e.name === ex.name);
+        if (matchExIdx >= 0) {
+          const logKey = `${weekId}_${wd.day}`;
+          const dayLogs = allLogData[logKey];
+          if (dayLogs && dayLogs[matchExIdx]) {
+            prevLogs[exIdx] = {};
+            Object.entries(dayLogs[matchExIdx]).forEach(([si, data]) => {
+              prevLogs[exIdx][parseInt(si)] = data;
+            });
+            return; // found for this exercise, stop searching older weeks
+          }
+        }
+      }
+    }
+  });
+}
+
 function loadLocalDayLogs(dayIndex) {
   logs = {};
   const all = getLocalLogs();
@@ -321,16 +360,25 @@ function renderExercises(workout, dayIndex) {
     const restSets = ex.restBetweenSets || '';
     const restExercise = ex.restBetweenExercises || '';
 
+    // Failure / AMRAP detection
+    const repsLower = (ex.reps || '').toLowerCase();
+    const isFailure = repsLower.includes('failure') || repsLower.includes('amrap');
+    const repsPlaceholder = isFailure ? 'to failure' : 'reps';
+
     let setArea = '';
     if (isExpanded) {
       const numSets = Math.max(Object.keys(exLogs).length, ex.sets || 3);
+      const prevEx = prevLogs[exIdx] || {};
       const setRows = Array.from({ length: numSets }, (_, si) => {
         const sl = exLogs[si] || { weight: '', reps: '' };
+        const prev = prevEx[si];
+        const wPh = prev?.weight ? `${prev.weight}` : weightPlaceholder;
+        const rPh = prev?.reps ? `${prev.reps}` : repsPlaceholder;
         return `<div class="set-row${isBodyweight ? ' bw-row' : ''}">
           <span class="set-num">S${si + 1}</span>
-          ${isBodyweight ? '<span class="set-bw-label">BW</span>' : `<input class="set-input" type="number" inputmode="decimal" placeholder="${weightPlaceholder}"
+          ${isBodyweight ? '<span class="set-bw-label">BW</span>' : `<input class="set-input${prev?.weight && !sl.weight ? ' has-prev' : ''}" type="number" inputmode="decimal" placeholder="${wPh}"
             value="${sl.weight}" data-ex="${exIdx}" data-set="${si}" data-field="weight"/>`}
-          <input class="set-input" type="number" inputmode="decimal" placeholder="reps"
+          <input class="set-input${prev?.reps && !sl.reps ? ' has-prev' : ''}" type="number" inputmode="decimal" placeholder="${rPh}"
             value="${sl.reps}" data-ex="${exIdx}" data-set="${si}" data-field="reps"/>
         </div>`;
       }).join('');
@@ -350,7 +398,7 @@ function renderExercises(workout, dayIndex) {
 
       setArea = `<div class="set-area">
         ${restSetHtml}
-        <div class="set-header"><span></span><span>${isBodyweight ? '' : weightLabel}</span><span>Reps</span></div>
+        <div class="set-header"><span></span><span>${isBodyweight ? '' : weightLabel}</span><span>${isFailure ? 'Reps (failure)' : 'Reps'}</span></div>
         ${setRows}
         ${timerHtml}
         ${restExHtml}

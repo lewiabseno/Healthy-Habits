@@ -110,6 +110,17 @@ async function handleOverride() {
         state.currentPlan = week.planData;
         localStorage.setItem('hh-weeks', JSON.stringify(weeks));
       }
+
+      // Clear old logs/checks for this day
+      if (overrideType === 'workout') {
+        const logs = JSON.parse(localStorage.getItem('hh-workout-logs') || '{}');
+        delete logs[`${state.currentPlanId}_${overrideDay}`];
+        localStorage.setItem('hh-workout-logs', JSON.stringify(logs));
+      } else {
+        const checks = JSON.parse(localStorage.getItem('hh-meal-checks') || '{}');
+        delete checks[`${state.currentPlanId}_${overrideDay}`];
+        localStorage.setItem('hh-meal-checks', JSON.stringify(checks));
+      }
     }
 
     showToast(`${overrideType === 'workout' ? 'Workout' : 'Meals'} replaced!`, 'success');
