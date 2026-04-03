@@ -207,6 +207,100 @@
 }
 
 /* Completion bar charts */
+/* Inline stat header (above charts) */
+.dash-stat-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0 6px;
+}
+
+.dash-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.dash-stat-value small {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.dash-stat-change {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dash-stat-change.up { color: var(--green-text); }
+.dash-stat-change.down { color: var(--red-text); }
+.dash-stat-change.neutral { color: var(--text-tertiary); }
+
+/* Exercise stat row */
+.ex-stat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0 8px;
+}
+
+.ex-stat-current {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.ex-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.ex-stat-unit {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.ex-stat-change {
+  font-size: 14px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.ex-stat-change.up { color: var(--green-text); }
+.ex-stat-change.down { color: var(--red-text); }
+.ex-stat-change.neutral { color: var(--text-tertiary); }
+
+.ex-stat-pb {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  text-align: right;
+}
+
+.ex-stat-pb-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.ex-stat-pb-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ex-stat-pb-reps {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 /* Time range pills */
 .range-pills {
   display: flex;

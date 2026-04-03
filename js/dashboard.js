@@ -69,11 +69,14 @@ function renderDemoDashboard(container) {
     }
   }
 
-  // Bodyweight trend chart with time range pills
   let bwData;
   try { bwData = JSON.parse(localStorage.getItem('hh-bodyweight') || '[]'); } catch { bwData = []; }
+  if (bwData.length > 0) bwData.sort((a, b) => a.date.localeCompare(b.date));
+
+  const exerciseNames = Object.keys(exerciseData).sort();
+
+  // Bodyweight trend chart with time range pills
   if (bwData.length >= 1) {
-    bwData.sort((a, b) => a.date.localeCompare(b.date));
     const bwSection = document.createElement('div');
     bwSection.className = 'dash-section';
     const ranges = [
@@ -90,6 +93,7 @@ function renderDemoDashboard(container) {
     ).join('');
     bwSection.innerHTML = `
       <div class="dash-section-title">Bodyweight Trend</div>
+      <div class="dash-stat-header" id="bwStatHeader"></div>
       <div class="range-pills">${rangePills}</div>
       <div class="chart-card"><div class="chart-wrap"><canvas id="bwDemoChart"></canvas></div></div>`;
     container.appendChild(bwSection);
@@ -100,10 +104,28 @@ function renderDemoDashboard(container) {
       responsive: true, maintainAspectRatio: false,
       animation: { duration: 300 },
       spanGaps: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y != null ? `${ctx.parsed.y} lbs` : '' } } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          displayColors: false,
+          backgroundColor: '#1c1c1e',
+          titleFont: { size: 12 },
+          bodyFont: { size: 14, weight: '600' },
+          padding: 8,
+          cornerRadius: 8,
+          callbacks: {
+            label: ctx => ctx.parsed.y != null ? `${ctx.parsed.y} lbs` : '',
+          },
+        },
+      },
+      elements: {
+        point: { radius: 0, hoverRadius: 5, hoverBackgroundColor: '#007aff', hoverBorderColor: '#fff', hoverBorderWidth: 2 },
+        line: { borderWidth: 2.5 },
+      },
       scales: {
-        x: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-        y: { ticks: { color: '#8e8e93', font: { size: 11 }, callback: v => v + ' lbs' }, grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: false },
+        x: { ticks: { color: '#8e8e93', font: { size: 10 }, maxTicksLimit: 6 }, grid: { display: false }, border: { display: false } },
+        y: { grace: '15%', ticks: { color: '#8e8e93', font: { size: 10 }, callback: v => v + ' lbs', maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } },
       },
     };
 
@@ -112,10 +134,22 @@ function renderDemoDashboard(container) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
       const cutoffStr = cutoff.toISOString().split('T')[0];
-      // Filter: only past/today data, and within the range
       const allValid = bwData.filter(d => d.date <= today);
       const filtered = days >= 99999 ? allValid : allValid.filter(d => d.date >= cutoffStr);
       const chartData = filtered.length > 0 ? filtered : allValid;
+
+      // Update stat header: current weight + change over selected range
+      const statEl = document.getElementById('bwStatHeader');
+      if (statEl && chartData.length > 0) {
+        const current = chartData[chartData.length - 1].weight;
+        const first = chartData[0].weight;
+        const diff = Math.round((current - first) * 10) / 10;
+        const diffClass = diff < 0 ? 'down' : diff > 0 ? 'up' : 'neutral';
+        const diffSign = diff > 0 ? '+' : '';
+        statEl.innerHTML = `
+          <span class="dash-stat-value">${current} <small>lbs</small></span>
+          <span class="dash-stat-change ${diffClass}">${diffSign}${diff} lbs</span>`;
+      }
 
       const todayLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const newLabels = chartData.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
@@ -127,9 +161,12 @@ function renderDemoDashboard(container) {
         newData.push(null);
       }
 
+      const bwTension = newData.length > 10 ? 0.3 : 0;
+
       if (bwChart) {
         bwChart.data.labels = newLabels;
         bwChart.data.datasets[0].data = newData;
+        bwChart.data.datasets[0].tension = bwTension;
         bwChart.update();
         return;
       }
@@ -139,8 +176,11 @@ function renderDemoDashboard(container) {
           labels: newLabels,
           datasets: [{
             data: newData,
-            borderColor: '#007aff', backgroundColor: 'rgba(0,122,255,0.1)',
-            borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#007aff', fill: true, tension: 0.3,
+            borderColor: '#007aff',
+            backgroundColor: 'rgba(0,122,255,0.08)',
+            fill: true,
+            tension: bwTension,
+            cubicInterpolationMode: 'default',
           }]
         },
         options: bwChartOpts,
@@ -159,8 +199,6 @@ function renderDemoDashboard(container) {
     });
   }
 
-  const exerciseNames = Object.keys(exerciseData).sort();
-
   if (exerciseNames.length === 0 && bwData.length === 0) {
     container.innerHTML += `<div class="empty-state">No data yet.<br>Log sets in the Workout tab<br>to see your progress here.</div>`;
     return;
@@ -176,7 +214,7 @@ function renderDemoDashboard(container) {
     chartSection.innerHTML = `
       <div class="dash-section-title">Exercise Progression</div>
       <div class="exercise-picker"><select id="exProgSelect">${opts}</select></div>
-      <div id="exPbContainer"></div>
+      <div class="ex-stat-row" id="exStatRow"></div>
       <div class="chart-card"><div class="chart-wrap"><canvas id="exProgChart"></canvas></div></div>`;
     container.appendChild(chartSection);
 
@@ -185,17 +223,6 @@ function renderDemoDashboard(container) {
     function renderChart(idx) {
       const name = exerciseNames[idx];
       const entries = exerciseData[name];
-
-      // Personal best for this exercise
-      const maxEntry = entries.reduce((best, e) => e.weight > best.weight ? e : best, entries[0]);
-      document.getElementById('exPbContainer').innerHTML = `
-        <div class="pb-grid" style="margin-bottom:10px">
-          <div class="pb-card">
-            <div class="pb-exercise">Personal Best</div>
-            <div class="pb-weight">${maxEntry.weight} lbs</div>
-            ${maxEntry.reps ? `<div class="pb-reps">${maxEntry.reps} reps</div>` : ''}
-          </div>
-        </div>`;
 
       // Group by week, find max
       const byWeek = {};
@@ -206,13 +233,39 @@ function renderDemoDashboard(container) {
       });
       const weeks = Object.keys(byWeek).sort();
 
+      // Personal best
+      const maxEntry = entries.reduce((best, e) => e.weight > best.weight ? e : best, entries[0]);
+
+      // Combined stat row: current | change | PB
+      const exStatRow = document.getElementById('exStatRow');
+      if (exStatRow && weeks.length > 0) {
+        const lastW = byWeek[weeks[weeks.length - 1]];
+        const prevW = weeks.length > 1 ? byWeek[weeks[weeks.length - 2]] : null;
+        const diff = prevW != null ? Math.round((lastW - prevW) * 10) / 10 : null;
+        const diffClass = diff != null ? (diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral') : 'neutral';
+        const diffSign = diff > 0 ? '+' : '';
+        exStatRow.innerHTML = `
+          <div class="ex-stat-current">
+            <span class="ex-stat-value">${lastW}</span>
+            <span class="ex-stat-unit">lbs</span>
+            ${diff != null ? `<span class="ex-stat-change ${diffClass}">${diffSign}${diff}</span>` : ''}
+          </div>
+          <div class="ex-stat-pb">
+            <span class="ex-stat-pb-label">PB</span>
+            <span class="ex-stat-pb-value">${maxEntry.weight} lbs</span>
+            ${maxEntry.reps ? `<span class="ex-stat-pb-reps">${maxEntry.reps} reps</span>` : ''}
+          </div>`;
+      }
+
       const newLabels = weeks.map(w => formatDate(w));
       const newData = weeks.map(w => byWeek[w]);
 
+      const t = newData.length > 10 ? 0.3 : 0;
+
       if (currentChart) {
-        // Update in-place
         currentChart.data.labels = newLabels;
         currentChart.data.datasets[0].data = newData;
+        currentChart.data.datasets[0].tension = t;
         currentChart.update();
         return;
       }
@@ -223,22 +276,35 @@ function renderDemoDashboard(container) {
             labels: newLabels,
             datasets: [{
               data: newData,
-              borderColor: '#007aff',
-              backgroundColor: 'rgba(0,122,255,0.1)',
-              borderWidth: 2.5,
-              pointRadius: 5,
-              pointBackgroundColor: '#007aff',
+              borderColor: '#34c759',
+              backgroundColor: 'rgba(52,199,89,0.08)',
               fill: true,
-              tension: 0.3,
+              tension: t,
             }]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
             animation: { duration: 300 },
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} lbs` } } },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                displayColors: false,
+                backgroundColor: '#1c1c1e',
+                titleFont: { size: 12 },
+                bodyFont: { size: 14, weight: '600' },
+                padding: 8,
+                cornerRadius: 8,
+                callbacks: { label: ctx => `${ctx.parsed.y} lbs` },
+              },
+            },
+            elements: {
+              point: { radius: 0, hoverRadius: 5, hoverBackgroundColor: '#34c759', hoverBorderColor: '#fff', hoverBorderWidth: 2 },
+              line: { borderWidth: 2.5 },
+            },
             scales: {
-              x: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-              y: { ticks: { color: '#8e8e93', font: { size: 11 }, callback: v => v + 'lb' }, grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: false },
+              x: { ticks: { color: '#8e8e93', font: { size: 10 }, maxTicksLimit: 6 }, grid: { display: false }, border: { display: false } },
+              y: { grace: '15%', ticks: { color: '#8e8e93', font: { size: 10 }, callback: v => v + ' lbs', maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } },
             },
           },
         });
