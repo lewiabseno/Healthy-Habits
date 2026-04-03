@@ -1,4 +1,4 @@
-import { badRequest, notFound, validateStr } from '../_validate.js';
+import { badRequest, notFound, validateStr, validateWeekPlan } from '../_validate.js';
 const json = (data, status = 200) => Response.json(data, { status });
 
 const MAX_PLAN_SIZE = 100 * 1024;
@@ -28,6 +28,8 @@ export async function onRequestPut(context) {
 
   if (body.planData !== undefined) {
     if (typeof body.planData !== 'object') return badRequest('planData must be an object');
+    const planErr = validateWeekPlan(body.planData);
+    if (planErr) return badRequest(planErr);
     const planStr = JSON.stringify(body.planData);
     if (planStr.length > MAX_PLAN_SIZE) return badRequest('Plan data too large');
     updates.push('plan_data = ?');

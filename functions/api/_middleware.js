@@ -5,6 +5,7 @@
 const CLOCK_SKEW_MS = 60 * 1000;
 const CERT_CACHE_TTL_MS = 5 * 60 * 1000;
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 let cachedJwks = {
   certsUrl: '',
@@ -16,6 +17,11 @@ export async function onRequest(context) {
   const { request, env, next } = context;
   const url = new URL(request.url);
   const isLocalhost = LOCAL_HOSTS.has(url.hostname);
+
+  if (!isLocalhost) {
+    const requestSafetyError = validateRequestSafety(request, url);
+    if (requestSafetyError) return requestSafetyError;
+  }
 
   if (isLocalhost) {
     if (!env.DEV_USER) {
@@ -52,6 +58,38 @@ export async function onRequest(context) {
 
   const response = await next();
   return withSecurityHeaders(response);
+}
+
+function validateRequestSafety(request, url) {
+  const method = request.method.toUpperCase();
+  if (SAFE_METHODS.has(method)) return null;
+
+  const origin = request.headers.get('Origin');
+  if (origin) {
+    if (origin !== url.origin) {
+      return forbidden('Cross-site request blocked');
+    }
+  } else {
+    const referer = request.headers.get('Referer');
+    if (!referer) return forbidden('Missing request origin');
+
+    let refererOrigin;
+    try {
+      refererOrigin = new URL(referer).origin;
+    } catch {
+      return forbidden('Invalid referer');
+    }
+    if (refererOrigin !== url.origin) {
+      return forbidden('Cross-site request blocked');
+    }
+  }
+
+  const contentType = (request.headers.get('Content-Type') || '').toLowerCase();
+  if (!contentType.startsWith('application/json')) {
+    return unsupportedMediaType('Content-Type must be application/json');
+  }
+
+  return null;
 }
 
 function getAccessConfig(env) {
@@ -208,6 +246,14 @@ function jsonError(message, status) {
 
 function unauthorized(message) {
   return jsonError(message, 401);
+}
+
+function forbidden(message) {
+  return jsonError(message, 403);
+}
+
+function unsupportedMediaType(message) {
+  return jsonError(message, 415);
 }
 
 function serverError(message) {

@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { showToast } from './toast.js';
 import { IS_PRODUCTION } from './config.js';
 import { renderCurrentTab } from './router.js';
+import { validateMealCollection } from './plan-validation.js';
 
 const overlay = document.getElementById('overrideModal');
 const titleEl = document.getElementById('overrideTitle');
@@ -64,12 +65,7 @@ function validateWorkout(json) {
 
 function validateMeals(json) {
   if (!json || typeof json !== 'object') return 'Invalid JSON object';
-  const keys = Object.keys(json);
-  if (keys.length === 0) return 'Must have at least one meal';
-  for (const [key, meal] of Object.entries(json)) {
-    if (!meal.name || typeof meal.name !== 'string') return `${key}.name is required`;
-  }
-  return null;
+  return validateMealCollection(json, 'meals');
 }
 
 async function handleOverride() {

@@ -1,4 +1,4 @@
-import { badRequest, validateStr, validateDate } from './_validate.js';
+import { badRequest, validateStr, validateDate, validateWeekPlan } from './_validate.js';
 const json = (data, status = 200) => Response.json(data, { status });
 
 const MAX_PLAN_SIZE = 100 * 1024; // 100KB max for plan JSON
@@ -24,6 +24,8 @@ export async function onRequestPost(context) {
   if (!validateDate(weekStart)) return badRequest('weekStart must be YYYY-MM-DD format');
   if (label && !validateStr(label, 128)) return badRequest('Label too long (max 128 chars)');
   if (!planData || typeof planData !== 'object') return badRequest('planData must be an object');
+  const planErr = validateWeekPlan(planData);
+  if (planErr) return badRequest(planErr);
 
   const planStr = JSON.stringify(planData);
   if (planStr.length > MAX_PLAN_SIZE) return badRequest(`Plan data too large (max ${MAX_PLAN_SIZE / 1024}KB)`);

@@ -28,6 +28,10 @@ function getLocalGroceryChecks() {
 }
 function saveLocalGroceryChecks(all) { localStorage.setItem('hh-grocery-checks', JSON.stringify(all)); }
 
+function getMealMacroNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 export async function renderMeals(container) {
   const plan = state.currentPlan;
   if (!plan) {
@@ -262,15 +266,19 @@ async function renderMealDay() {
 
   mealKeys.forEach(k => {
     const m = meals[k];
-    plannedCal += m.calories || 0;
-    plannedP += m.protein || 0;
-    plannedC += m.carbs || 0;
-    plannedF += m.fat || 0;
+    const calories = getMealMacroNumber(m.calories) ?? 0;
+    const protein = getMealMacroNumber(m.protein) ?? 0;
+    const carbs = getMealMacroNumber(m.carbs) ?? 0;
+    const fat = getMealMacroNumber(m.fat) ?? 0;
+    plannedCal += calories;
+    plannedP += protein;
+    plannedC += carbs;
+    plannedF += fat;
     if (mealChecks[k]) {
-      eatenCal += m.calories || 0;
-      eatenP += m.protein || 0;
-      eatenC += m.carbs || 0;
-      eatenF += m.fat || 0;
+      eatenCal += calories;
+      eatenP += protein;
+      eatenC += carbs;
+      eatenF += fat;
     }
   });
 
@@ -303,6 +311,10 @@ async function renderMealDay() {
     const ch = !!mealChecks[key];
     const isExpanded = expandedMeal === key;
     const hasRecipe = m.recipe && (m.recipe.ingredients?.length > 0 || m.recipe.instructions);
+    const calories = getMealMacroNumber(m.calories);
+    const protein = getMealMacroNumber(m.protein);
+    const carbs = getMealMacroNumber(m.carbs);
+    const fat = getMealMacroNumber(m.fat);
 
     let recipeHtml = '';
     if (isExpanded && hasRecipe) {
@@ -323,10 +335,10 @@ async function renderMealDay() {
           ${m.time ? `<div class="meal-time">${esc(m.time)}</div>` : ''}
           ${m.items ? `<div class="meal-items">${esc(m.items)}</div>` : ''}
           <div class="meal-macros">
-            ${m.calories != null ? `<span><b>${m.calories}</b> cal</span>` : ''}
-            ${m.protein != null ? `<span><b>${m.protein}g</b> protein</span>` : ''}
-            ${m.carbs != null ? `<span><b>${m.carbs}g</b> carbs</span>` : ''}
-            ${m.fat != null ? `<span><b>${m.fat}g</b> fat</span>` : ''}
+            ${calories != null ? `<span><b>${calories}</b> cal</span>` : ''}
+            ${protein != null ? `<span><b>${protein}g</b> protein</span>` : ''}
+            ${carbs != null ? `<span><b>${carbs}g</b> carbs</span>` : ''}
+            ${fat != null ? `<span><b>${fat}g</b> fat</span>` : ''}
           </div>
         </div>
         ${hasRecipe ? `<span class="meal-expand-arrow">${isExpanded ? '\u25B2' : '\u25BC'}</span>` : ''}

@@ -3,6 +3,7 @@ import { showToast } from './toast.js';
 import { IS_PRODUCTION } from './config.js';
 import { renderCurrentTab } from './router.js';
 import { esc, escAttr } from './sanitize.js';
+import { validateMealCollection, validateMealOverrides } from './plan-validation.js';
 
 const overlay = document.getElementById('importModal');
 const textarea = document.getElementById('importJson');
@@ -83,11 +84,10 @@ function validate(json) {
   if (!json.meals || typeof json.meals !== 'object' || Object.keys(json.meals).length === 0) {
     return 'meals must be an object with at least one key';
   }
-  for (const [key, meal] of Object.entries(json.meals)) {
-    if (!meal.name || typeof meal.name !== 'string') {
-      return `meals.${key}.name is required`;
-    }
-  }
+  const mealErr = validateMealCollection(json.meals, 'meals');
+  if (mealErr) return mealErr;
+  const mealOverrideErr = validateMealOverrides(json.mealOverrides, 'mealOverrides');
+  if (mealOverrideErr) return mealOverrideErr;
 
   if (!json.grocery || typeof json.grocery !== 'object' || Object.keys(json.grocery).length === 0) {
     return 'grocery must be an object with at least one category';
