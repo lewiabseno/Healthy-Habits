@@ -99,7 +99,8 @@ function renderDemoDashboard(container) {
     const bwChartOpts = {
       responsive: true, maintainAspectRatio: false,
       animation: { duration: 300 },
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} lbs` } } },
+      spanGaps: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y != null ? `${ctx.parsed.y} lbs` : '' } } },
       scales: {
         x: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
         y: { ticks: { color: '#8e8e93', font: { size: 11 }, callback: v => v + ' lbs' }, grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: false },
@@ -116,11 +117,17 @@ function renderDemoDashboard(container) {
       const filtered = days >= 99999 ? allValid : allValid.filter(d => d.date >= cutoffStr);
       const chartData = filtered.length > 0 ? filtered : allValid;
 
+      const todayLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const newLabels = chartData.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
       const newData = chartData.map(d => d.weight);
 
+      // Ensure chart always ends at today
+      if (chartData.length === 0 || chartData[chartData.length - 1].date !== today) {
+        newLabels.push(todayLabel);
+        newData.push(null);
+      }
+
       if (bwChart) {
-        // Update in-place instead of destroying
         bwChart.data.labels = newLabels;
         bwChart.data.datasets[0].data = newData;
         bwChart.update();
