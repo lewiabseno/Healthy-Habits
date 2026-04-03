@@ -1,6 +1,7 @@
 import { state, getCurrentMonday, formatWeekRange } from './state.js';
 import { fetchWeeks, fetchPlan } from './api.js';
 import { renderCurrentTab } from './router.js';
+import { esc, escAttr } from './sanitize.js';
 
 const pickerEl = document.getElementById('weekPicker');
 
@@ -32,7 +33,7 @@ function renderPicker() {
 
   const opts = state.weeks.map(w => {
     const label = w.label || formatWeekRange(w.week_start);
-    return `<option value="${w.id}"${w.id === state.currentPlanId ? ' selected' : ''}>${label}</option>`;
+    return `<option value="${escAttr(w.id)}"${w.id === state.currentPlanId ? ' selected' : ''}>${esc(label)}</option>`;
   }).join('');
 
   pickerEl.innerHTML = `<select id="weekSelect">${opts}</select>`;

@@ -1,4 +1,5 @@
 import { IS_PRODUCTION } from './config.js';
+import { esc, escAttr } from './sanitize.js';
 
 // App-wide state
 export const state = {
@@ -59,7 +60,7 @@ export function getWeekPickerHtml() {
 
   return `<div class="week-nav">
     <button class="week-nav-arrow${hasPrev ? '' : ' disabled'}" id="weekPrev" ${hasPrev ? '' : 'disabled'}>&lsaquo;</button>
-    <span class="week-nav-label" id="weekNavLabel">${label}</span>
+    <span class="week-nav-label" id="weekNavLabel">${esc(label)}</span>
     <button class="week-nav-arrow${hasNext ? '' : ' disabled'}" id="weekNext" ${hasNext ? '' : 'disabled'}>&rsaquo;</button>
   </div>`;
 }
@@ -91,12 +92,12 @@ export function buildWeekModal(renderFn, container) {
   const months = Object.keys(byMonth).reverse(); // newest first
   let html = '';
   months.forEach(month => {
-    html += `<div class="wm-month">${month}</div>`;
+    html += `<div class="wm-month">${esc(month)}</div>`;
     byMonth[month].forEach(w => {
       const id = w.id || w.weekStart;
       const label = w.label || formatWeekRange(w.weekStart || id);
       const isCurrent = id === state.currentPlanId;
-      html += `<div class="wm-week${isCurrent ? ' active' : ''}" data-id="${id}">${label}</div>`;
+      html += `<div class="wm-week${isCurrent ? ' active' : ''}" data-id="${escAttr(id)}">${esc(label)}</div>`;
     });
   });
 

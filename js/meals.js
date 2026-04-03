@@ -1,6 +1,7 @@
 import { state, formatWeekRange, getWeekPickerHtml, initWeekNav } from './state.js';
 import { showToast } from './toast.js';
 import { IS_PRODUCTION } from './config.js';
+import { esc, escAttr } from './sanitize.js';
 
 let mealChecks = {};
 let groceryChecks = {};
@@ -307,20 +308,20 @@ async function renderMealDay() {
     if (isExpanded && hasRecipe) {
       const r = m.recipe;
       recipeHtml = `<div class="meal-recipe">
-        ${r.ingredients?.length > 0 ? `<div class="recipe-section"><div class="recipe-heading">Ingredients</div><ul class="recipe-list">${r.ingredients.map(ing => `<li>${ing}</li>`).join('')}</ul></div>` : ''}
-        ${r.instructions ? `<div class="recipe-section"><div class="recipe-heading">Instructions</div><div class="recipe-text">${r.instructions}</div></div>` : ''}
-        ${r.prepTime ? `<div class="recipe-meta"><span>Prep: ${r.prepTime}</span></div>` : ''}
-        ${r.cookTime ? `<div class="recipe-meta"><span>Cook: ${r.cookTime}</span></div>` : ''}
+        ${r.ingredients?.length > 0 ? `<div class="recipe-section"><div class="recipe-heading">Ingredients</div><ul class="recipe-list">${r.ingredients.map(ing => `<li>${esc(ing)}</li>`).join('')}</ul></div>` : ''}
+        ${r.instructions ? `<div class="recipe-section"><div class="recipe-heading">Instructions</div><div class="recipe-text">${esc(r.instructions)}</div></div>` : ''}
+        ${r.prepTime ? `<div class="recipe-meta"><span>Prep: ${esc(r.prepTime)}</span></div>` : ''}
+        ${r.cookTime ? `<div class="recipe-meta"><span>Cook: ${esc(r.cookTime)}</span></div>` : ''}
       </div>`;
     }
 
-    return `<div class="meal-entry" data-key="${key}">
-      <div class="meal-row" data-key="${key}" data-action="check">
+    return `<div class="meal-entry" data-key="${escAttr(key)}">
+      <div class="meal-row" data-key="${escAttr(key)}" data-action="check">
         <div class="meal-check${ch ? ' checked' : ''}"><span class="meal-checkmark">\u2713</span></div>
         <div style="flex:1">
-          <div class="meal-name${ch ? ' done' : ''}">${m.name}</div>
-          ${m.time ? `<div class="meal-time">${m.time}</div>` : ''}
-          ${m.items ? `<div class="meal-items">${m.items}</div>` : ''}
+          <div class="meal-name${ch ? ' done' : ''}">${esc(m.name)}</div>
+          ${m.time ? `<div class="meal-time">${esc(m.time)}</div>` : ''}
+          ${m.items ? `<div class="meal-items">${esc(m.items)}</div>` : ''}
           <div class="meal-macros">
             ${m.calories != null ? `<span><b>${m.calories}</b> cal</span>` : ''}
             ${m.protein != null ? `<span><b>${m.protein}g</b> protein</span>` : ''}
@@ -429,16 +430,16 @@ async function renderGroceryInline() {
 
   categories.forEach(cat => {
     const items = grocery[cat];
-    html += `<div class="grocery-label">${cat}</div><div class="grocery-card">`;
+    html += `<div class="grocery-label">${esc(cat)}</div><div class="grocery-card">`;
     items.forEach((item, i) => {
       const key = `${cat}_${i}`;
       const ch = !!groceryChecks[key];
       const name = typeof item === 'string' ? item : item.name;
       const qty = typeof item === 'object' ? item.qty : '';
-      html += `<div class="grocery-item" data-cat="${cat}" data-idx="${i}">
+      html += `<div class="grocery-item" data-cat="${escAttr(cat)}" data-idx="${i}">
         <div class="grocery-check${ch ? ' checked' : ''}"><span class="grocery-checkmark">\u2713</span></div>
-        <span class="grocery-name${ch ? ' done' : ''}">${name}</span>
-        ${qty ? `<span class="grocery-qty">${qty}</span>` : ''}
+        <span class="grocery-name${ch ? ' done' : ''}">${esc(name)}</span>
+        ${qty ? `<span class="grocery-qty">${esc(qty)}</span>` : ''}
       </div>`;
     });
     html += '</div>';

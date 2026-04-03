@@ -1,3 +1,4 @@
+import { badRequest, validateStr } from './_validate.js';
 const json = (data, status = 200) => Response.json(data, { status });
 
 export async function onRequestGet(context) {
@@ -8,21 +9,22 @@ export async function onRequestGet(context) {
   switch (type) {
     case 'exercise-names': {
       const { results } = await env.DB.prepare(
-        'SELECT DISTINCT exercise_name FROM workout_logs WHERE user_id = ? AND weight IS NOT NULL ORDER BY exercise_name'
+        'SELECT DISTINCT exercise_name FROM workout_logs WHERE user_id = ? AND weight IS NOT NULL ORDER BY exercise_name LIMIT 200'
       ).bind(userId).all();
       return json(results.map(r => r.exercise_name));
     }
 
     case 'exercise-progression': {
       const name = url.searchParams.get('name');
-      if (!name) return json({ error: 'name required' }, 400);
+      if (!name || !validateStr(name, 255)) return badRequest('Invalid exercise name');
       const { results } = await env.DB.prepare(
         `SELECT wp.week_start, wp.label, MAX(wl.weight) as max_weight
          FROM workout_logs wl
          JOIN weekly_plans wp ON wl.plan_id = wp.id
          WHERE wl.user_id = ? AND wl.exercise_name = ? AND wl.weight IS NOT NULL
          GROUP BY wp.week_start
-         ORDER BY wp.week_start ASC`
+         ORDER BY wp.week_start ASC
+         LIMIT 100`
       ).bind(userId, name).all();
       return json(results);
     }
@@ -38,7 +40,8 @@ export async function onRequestGet(context) {
            GROUP BY exercise_name
          )
          GROUP BY exercise_name
-         ORDER BY exercise_name`
+         ORDER BY exercise_name
+         LIMIT 200`
       ).bind(userId, userId).all();
       return json(results);
     }
@@ -87,6 +90,6 @@ export async function onRequestGet(context) {
     }
 
     default:
-      return json({ error: 'Unknown type. Use: exercise-names, exercise-progression, personal-bests, completion, adherence' }, 400);
+      return badRequest('Unknown type. Use: exercise-names, exercise-progression, personal-bests, completion, adherence');
   }
 }

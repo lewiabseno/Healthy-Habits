@@ -1,6 +1,7 @@
 import { state, formatDate } from './state.js';
 import { showToast } from './toast.js';
 import { IS_PRODUCTION } from './config.js';
+import { esc, escAttr } from './sanitize.js';
 
 let charts = [];
 
@@ -325,7 +326,7 @@ function renderDemoDashboard(container) {
   if (exerciseNames.length > 0) {
     const chartSection = document.createElement('div');
     chartSection.className = 'dash-section';
-    const opts = exerciseNames.map((n, i) => `<option value="${i}">${n}</option>`).join('');
+    const opts = exerciseNames.map((n, i) => `<option value="${i}">${esc(n)}</option>`).join('');
     chartSection.innerHTML = `
       <div class="dash-section-title">Exercise Progression</div>
       <div class="exercise-picker"><select id="exProgSelect">${opts}</select></div>
@@ -439,7 +440,7 @@ async function renderExerciseProgression(parentEl) {
 
   const section = document.createElement('div');
   section.className = 'dash-section';
-  const opts = names.map((n, i) => `<option value="${i}">${n}</option>`).join('');
+  const opts = names.map((n, i) => `<option value="${i}">${esc(n)}</option>`).join('');
   section.innerHTML = `
     <div class="dash-section-title">Exercise Progression</div>
     <div class="exercise-picker"><select id="exProgSelect">${opts}</select></div>
@@ -483,7 +484,7 @@ async function renderExerciseProgression(parentEl) {
         `<div class="history-row"><span class="history-date">${formatDate(d.date)}</span><span class="history-sets">${d.maxW} lbs</span></div>`
       ).join('')}</div>`;
     } else {
-      histEl.innerHTML = `<div class="empty-state">No data yet for ${name}.</div>`;
+      histEl.innerHTML = `<div class="empty-state">No data yet for ${esc(name)}.</div>`;
     }
   }
 
@@ -502,9 +503,9 @@ async function renderPersonalBests(parentEl) {
     <div class="dash-section-title">Personal Bests</div>
     <div class="pb-grid">${bests.map(b => `
       <div class="pb-card">
-        <div class="pb-exercise">${b.exercise_name}</div>
-        <div class="pb-weight">${b.best_weight} lbs</div>
-        <div class="pb-reps">${b.best_reps} reps</div>
+        <div class="pb-exercise">${esc(b.exercise_name)}</div>
+        <div class="pb-weight">${esc(b.best_weight)} lbs</div>
+        <div class="pb-reps">${esc(b.best_reps)} reps</div>
       </div>`).join('')}
     </div>`;
   parentEl.appendChild(section);

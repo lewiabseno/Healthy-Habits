@@ -2,6 +2,7 @@ import { state, formatWeekRange, getCurrentMonday } from './state.js';
 import { showToast } from './toast.js';
 import { IS_PRODUCTION } from './config.js';
 import { renderCurrentTab } from './router.js';
+import { esc, escAttr } from './sanitize.js';
 
 const overlay = document.getElementById('importModal');
 const textarea = document.getElementById('importJson');
@@ -100,11 +101,17 @@ function validate(json) {
   return null;
 }
 
+const MAX_IMPORT_SIZE = 100 * 1024; // 100KB
+
 async function handleImport() {
   errorEl.classList.remove('show');
   const raw = textarea.value.trim();
   if (!raw) {
     showError('Please paste your JSON plan');
+    return;
+  }
+  if (raw.length > MAX_IMPORT_SIZE) {
+    showError(`Import too large (max ${MAX_IMPORT_SIZE / 1024}KB)`);
     return;
   }
 
@@ -201,7 +208,7 @@ function updateWeekPicker() {
   const opts = state.weeks.map(w => {
     const label = w.label || `Week of ${w.weekStart}`;
     const id = w.id || w.weekStart;
-    return `<option value="${id}"${id === state.currentPlanId ? ' selected' : ''}>${label}</option>`;
+    return `<option value="${escAttr(id)}"${id === state.currentPlanId ? ' selected' : ''}>${esc(label)}</option>`;
   }).join('');
   pickerEl.innerHTML = `<select id="weekSelect">${opts}</select>`;
   document.getElementById('weekSelect').addEventListener('change', (e) => {
@@ -239,7 +246,7 @@ function confirmOverwrite(weekStart) {
         <div class="confirm-box">
           <div class="confirm-body">
             <div class="confirm-title">Week Exists</div>
-            <div class="confirm-message">A plan for week of ${weekStart} already exists. Overwrite it?</div>
+            <div class="confirm-message">A plan for week of ${esc(weekStart)} already exists. Overwrite it?</div>
           </div>
           <div class="confirm-actions">
             <button class="confirm-btn cancel" id="confirmNo">Cancel</button>

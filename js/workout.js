@@ -1,6 +1,7 @@
 import { state, formatWeekRange, getWeekPickerHtml, initWeekNav, normalizeExName } from './state.js';
 import { showToast } from './toast.js';
 import { IS_PRODUCTION } from './config.js';
+import { esc, escAttr } from './sanitize.js';
 
 let logs = {}; // { exerciseIndex: { setIndex: { weight, reps } } }
 let prevLogs = {}; // previous week's logs for placeholders
@@ -126,7 +127,7 @@ export async function renderWorkout(container) {
       // Default to workout content
       const tipText = workout.tip || workout.note || '';
       contentHtml = `
-        ${tipText ? `<div class="note-card">${tipText}</div>` : ''}
+        ${tipText ? `<div class="note-card">${esc(tipText)}</div>` : ''}
         <div class="card-group">${renderExercises(workout, state.currentDay)}</div>`;
     }
 
@@ -148,15 +149,15 @@ export async function renderWorkout(container) {
           <div>
             <div class="day-title">${dateLabel}</div>
             <div class="day-badges">
-              <span class="badge ${badgeClass}">${workout.type || workout.title}</span>
-              ${workout.duration ? `<span class="day-duration">${workout.duration}</span>` : ''}
+              <span class="badge ${badgeClass}">${esc(workout.type || workout.title)}</span>
+              ${workout.duration ? `<span class="day-duration">${esc(workout.duration)}</span>` : ''}
             </div>
           </div>
           <button class="replace-day-btn" id="replaceWorkoutBtn" type="button">Replace</button>
         </div>
       </div>
       ${subtabsHtml}
-      <textarea class="day-notes" id="dayNotesInput" placeholder="How are you feeling? Energy, soreness, sleep...">${dayNotes}</textarea>
+      <textarea class="day-notes" id="dayNotesInput" placeholder="How are you feeling? Energy, soreness, sleep...">${esc(dayNotes)}</textarea>
       ${contentHtml}`;
   }
 
@@ -320,13 +321,13 @@ function renderStretches(stretches, type) {
     const name = typeof s === 'string' ? s : s.name;
     const duration = typeof s === 'object' ? s.duration : '';
     const note = typeof s === 'object' ? s.notes : '';
-    return `<div class="stretch-item" data-type="${type}" data-idx="${i}">
+    return `<div class="stretch-item" data-type="${escAttr(type)}" data-idx="${i}">
       <div class="stretch-check${ch ? ' checked' : ''}"><span class="stretch-checkmark">\u2713</span></div>
       <div style="flex:1">
-        <div class="stretch-name${ch ? ' done' : ''}">${name}</div>
-        ${note ? `<div class="stretch-note">${note}</div>` : ''}
+        <div class="stretch-name${ch ? ' done' : ''}">${esc(name)}</div>
+        ${note ? `<div class="stretch-note">${esc(note)}</div>` : ''}
       </div>
-      ${duration ? `<span class="stretch-detail">${duration}</span>` : ''}
+      ${duration ? `<span class="stretch-detail">${esc(duration)}</span>` : ''}
     </div>`;
   }).join('');
 
@@ -477,8 +478,8 @@ function renderExercises(workout, dayIndex) {
       }).join('');
 
       // Rest info lines
-      const restSetHtml = restSets ? `<div class="rest-info">${clockIcon} Rest <b>${restSets}</b> between sets</div>` : '';
-      const restExHtml = restExercise ? `<div class="rest-between-exercises">${clockIcon} Rest <b>${restExercise}</b> before next exercise</div>` : '';
+      const restSetHtml = restSets ? `<div class="rest-info">${clockIcon} Rest <b>${esc(restSets)}</b> between sets</div>` : '';
+      const restExHtml = restExercise ? `<div class="rest-between-exercises">${clockIcon} Rest <b>${esc(restExercise)}</b> before next exercise</div>` : '';
 
       // Timer display
       const timerHtml = activeTimer && activeTimer.exIdx === exIdx
@@ -510,13 +511,13 @@ function renderExercises(workout, dayIndex) {
     }
 
     return `<div class="ex-card${isComplete ? ' complete' : ''}">
-      <div class="ex-header" data-key="${key}">
+      <div class="ex-header" data-key="${escAttr(key)}">
         <div>
-          <div class="ex-name">${ex.name} ${equipBadge}</div>
-          ${ex.notes ? `<div class="ex-note">${ex.notes}</div>` : ''}
+          <div class="ex-name">${esc(ex.name)} ${equipBadge}</div>
+          ${ex.notes ? `<div class="ex-note">${esc(ex.notes)}</div>` : ''}
         </div>
         <div class="ex-right">
-          <span class="ex-reps-label">${ex.sets} \u00D7 ${ex.reps}</span>
+          <span class="ex-reps-label">${esc(ex.sets)} \u00D7 ${esc(ex.reps)}</span>
           <span class="ex-arrow">${isExpanded ? '\u25B2' : '\u25BC'}</span>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { state, formatWeekRange, getCurrentMonday } from './state.js';
 import { showToast } from './toast.js';
 import { IS_PRODUCTION } from './config.js';
+import { esc, escAttr } from './sanitize.js';
 
 function getNextMonday() {
   const d = new Date();
@@ -26,7 +27,7 @@ export async function renderHome(container) {
     // Today's workout
     const workout = (state.currentPlan.workouts || []).find(w => w.day === todayIdx);
     workoutSummary = workout
-      ? `${workout.type || workout.title} \u00B7 ${workout.duration || ''}`
+      ? `${esc(workout.type || workout.title)} \u00B7 ${esc(workout.duration || '')}`
       : 'Rest day';
 
     // Meals eaten today
@@ -80,13 +81,13 @@ export async function renderHome(container) {
     const id = w.id || w.weekStart;
     const label = w.label || formatWeekRange(w.weekStart || id);
     const isCurrent = id === state.currentPlanId;
-    return `<div class="home-week-row${isCurrent ? ' current' : ''}" data-id="${id}">
+    return `<div class="home-week-row${isCurrent ? ' current' : ''}" data-id="${escAttr(id)}">
       <div class="home-week-info">
-        <div class="home-week-label">${label}</div>
-        ${badge ? `<div class="home-week-badge ${badge.cls || ''}">${badge.text}</div>` : ''}
+        <div class="home-week-label">${esc(label)}</div>
+        ${badge ? `<div class="home-week-badge ${badge.cls || ''}">${esc(badge.text)}</div>` : ''}
       </div>
       <div class="home-week-actions">
-        <button class="home-week-btn export" data-id="${id}">Export</button>
+        <button class="home-week-btn export" data-id="${escAttr(id)}">Export</button>
       </div>
     </div>`;
   }
