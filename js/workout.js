@@ -9,6 +9,7 @@ let pillScrollPos = null;
 let isInitialRender = true;
 let activeSubtab = 'workout'; // 'warmup' | 'workout' | 'cooldown'
 let stretchChecks = {};
+let rpeData = {}; // { exIdx: rpeValue }
 let activeTimer = null; // { exIdx, seconds, interval }
 
 function getLocalStretchChecks() {
@@ -53,6 +54,24 @@ export async function renderWorkout(container) {
       loadLocalDayLogs(state.currentDay);
     }
     loadPreviousLogs(state.currentDay);
+    // Pre-load RPE data for this day
+    rpeData = {};
+    if (IS_PRODUCTION) {
+      try {
+        const { loadRpe } = await import('./api.js');
+        const data = await loadRpe(state.currentPlanId, state.currentDay);
+        data.forEach(r => { rpeData[r.exercise_index] = r.rpe; });
+      } catch (e) { /* silent */ }
+    } else {
+      const allRpe = JSON.parse(localStorage.getItem('hh-rpe') || '{}');
+      Object.keys(allRpe).forEach(key => {
+        const prefix = `${state.currentPlanId}_${state.currentDay}_rpe_`;
+        if (key.startsWith(prefix)) {
+          const exIdx = parseInt(key.slice(prefix.length));
+          rpeData[exIdx] = allRpe[key];
+        }
+      });
+    }
   }
 
   // Check which days have logged data
@@ -96,7 +115,7 @@ export async function renderWorkout(container) {
     }
 
     // Load stretch checks
-    loadStretchChecks();
+    await loadStretchChecks();
 
     let contentHtml = '';
     if (activeSubtab === 'warmup' && hasWarmup) {
@@ -111,9 +130,17 @@ export async function renderWorkout(container) {
         <div class="card-group">${renderExercises(workout, state.currentDay)}</div>`;
     }
 
-    const notesKey = `${state.currentPlanId}_${state.currentDay}_notes`;
-    const allNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}');
-    const dayNotes = allNotes[notesKey] || '';
+    let dayNotes = '';
+    if (IS_PRODUCTION) {
+      try {
+        const { loadDayNotes } = await import('./api.js');
+        dayNotes = await loadDayNotes(state.currentPlanId, state.currentDay);
+      } catch (e) { /* silent */ }
+    } else {
+      const notesKey = `${state.currentPlanId}_${state.currentDay}_notes`;
+      const allNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}');
+      dayNotes = allNotes[notesKey] || '';
+    }
 
     bodyHtml = `
       <div class="day-header">
@@ -189,22 +216,36 @@ export async function renderWorkout(container) {
     let notesTimer;
     notesInput.addEventListener('input', () => {
       clearTimeout(notesTimer);
-      notesTimer = setTimeout(() => {
-        const allNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}');
-        allNotes[`${state.currentPlanId}_${state.currentDay}_notes`] = notesInput.value;
-        localStorage.setItem('hh-day-notes', JSON.stringify(allNotes));
+      notesTimer = setTimeout(async () => {
+        if (IS_PRODUCTION) {
+          try {
+            const { upsertDayNotes } = await import('./api.js');
+            await upsertDayNotes(state.currentPlanId, state.currentDay, notesInput.value);
+          } catch (e) { /* silent */ }
+        } else {
+          const allNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}');
+          allNotes[`${state.currentPlanId}_${state.currentDay}_notes`] = notesInput.value;
+          localStorage.setItem('hh-day-notes', JSON.stringify(allNotes));
+        }
       }, 500);
     });
   }
 
   // RPE select handler
   container.querySelectorAll('.rpe-select').forEach(sel => {
-    sel.addEventListener('change', () => {
-      const exIdx = sel.dataset.ex;
-      const rpeKey = `${state.currentPlanId}_${state.currentDay}_rpe_${exIdx}`;
-      const allRpe = JSON.parse(localStorage.getItem('hh-rpe') || '{}');
-      allRpe[rpeKey] = sel.value;
-      localStorage.setItem('hh-rpe', JSON.stringify(allRpe));
+    sel.addEventListener('change', async () => {
+      const exIdx = parseInt(sel.dataset.ex);
+      if (IS_PRODUCTION) {
+        try {
+          const { upsertRpe } = await import('./api.js');
+          await upsertRpe(state.currentPlanId, state.currentDay, exIdx, sel.value);
+        } catch (e) { /* silent */ }
+      } else {
+        const rpeKey = `${state.currentPlanId}_${state.currentDay}_rpe_${exIdx}`;
+        const allRpe = JSON.parse(localStorage.getItem('hh-rpe') || '{}');
+        allRpe[rpeKey] = sel.value;
+        localStorage.setItem('hh-rpe', JSON.stringify(allRpe));
+      }
     });
   });
 
@@ -228,22 +269,41 @@ export async function renderWorkout(container) {
 
   // Stretch check handlers
   container.querySelectorAll('.stretch-item').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', async () => {
       const type = el.dataset.type;
       const idx = parseInt(el.dataset.idx);
       const key = `${state.currentPlanId}_${state.currentDay}_${type}_${idx}`;
       stretchChecks[key] = !stretchChecks[key];
-      const all = getLocalStretchChecks();
-      Object.assign(all, stretchChecks);
-      saveLocalStretchChecks(all);
+      if (IS_PRODUCTION) {
+        try {
+          const { upsertStretchCheck } = await import('./api.js');
+          await upsertStretchCheck(state.currentPlanId, state.currentDay, type, idx, stretchChecks[key]);
+        } catch (e) { /* silent */ }
+      } else {
+        const all = getLocalStretchChecks();
+        Object.assign(all, stretchChecks);
+        saveLocalStretchChecks(all);
+      }
       renderWorkout(container);
     });
   });
 }
 
-function loadStretchChecks() {
-  const all = getLocalStretchChecks();
-  stretchChecks = all;
+async function loadStretchChecks() {
+  stretchChecks = {};
+  if (IS_PRODUCTION) {
+    try {
+      const { loadStretchChecks: loadFromApi } = await import('./api.js');
+      const data = await loadFromApi(state.currentPlanId, state.currentDay);
+      data.forEach(r => {
+        const key = `${state.currentPlanId}_${state.currentDay}_${r.stretch_type}_${r.stretch_index}`;
+        stretchChecks[key] = r.checked;
+      });
+    } catch (e) { /* silent */ }
+  } else {
+    const all = getLocalStretchChecks();
+    stretchChecks = all;
+  }
 }
 
 function renderStretches(stretches, type) {
@@ -430,9 +490,7 @@ function renderExercises(workout, dayIndex) {
         : '';
 
       // RPE selector
-      const rpeKey = `${state.currentPlanId}_${state.currentDay}_rpe_${exIdx}`;
-      const allRpe = JSON.parse(localStorage.getItem('hh-rpe') || '{}');
-      const currentRpe = allRpe[rpeKey] || '';
+      const currentRpe = rpeData[exIdx] || '';
       const rpeOpts = ['', '6', '7', '7.5', '8', '8.5', '9', '9.5', '10'].map(v =>
         `<option value="${v}"${v === currentRpe ? ' selected' : ''}>${v || 'RPE'}</option>`
       ).join('');

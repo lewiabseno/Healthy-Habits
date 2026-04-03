@@ -141,10 +141,16 @@ export function initWeekNav(renderFn, container) {
 export async function handleWeekSwitch(weekId, renderFn, container) {
   if (weekId === state.currentPlanId) return;
   if (IS_PRODUCTION) {
-    const { fetchPlan } = await import('./api.js');
-    const plan = await fetchPlan(weekId);
-    state.currentPlanId = weekId;
-    state.currentPlan = plan.plan_data;
+    try {
+      const { fetchPlan } = await import('./api.js');
+      const plan = await fetchPlan(weekId);
+      state.currentPlanId = weekId;
+      state.currentPlan = plan.plan_data;
+    } catch (e) {
+      const { showToast } = await import('./toast.js');
+      showToast('Failed to load week', 'error');
+      return;
+    }
   } else {
     const week = state.weeks.find(w => (w.id || w.weekStart) === weekId);
     if (week) {

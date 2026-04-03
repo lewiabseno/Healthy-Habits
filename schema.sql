@@ -61,6 +61,36 @@ CREATE TABLE IF NOT EXISTS bodyfat_logs (
   UNIQUE(user_id, recorded_date)
 );
 
+CREATE TABLE IF NOT EXISTS rpe_logs (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id TEXT NOT NULL,
+  plan_id TEXT NOT NULL REFERENCES weekly_plans(id) ON DELETE CASCADE,
+  day_index INTEGER NOT NULL,
+  exercise_index INTEGER NOT NULL,
+  rpe TEXT NOT NULL,
+  UNIQUE(user_id, plan_id, day_index, exercise_index)
+);
+
+CREATE TABLE IF NOT EXISTS day_notes (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id TEXT NOT NULL,
+  plan_id TEXT NOT NULL REFERENCES weekly_plans(id) ON DELETE CASCADE,
+  day_index INTEGER NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  UNIQUE(user_id, plan_id, day_index)
+);
+
+CREATE TABLE IF NOT EXISTS stretch_checks (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  user_id TEXT NOT NULL,
+  plan_id TEXT NOT NULL REFERENCES weekly_plans(id) ON DELETE CASCADE,
+  day_index INTEGER NOT NULL,
+  stretch_type TEXT NOT NULL,
+  stretch_index INTEGER NOT NULL,
+  checked INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(user_id, plan_id, day_index, stretch_type, stretch_index)
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_plans_user ON weekly_plans(user_id, week_start DESC);
 CREATE INDEX IF NOT EXISTS idx_logs_plan ON workout_logs(plan_id, day_index);

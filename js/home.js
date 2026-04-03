@@ -33,7 +33,13 @@ export async function renderHome(container) {
     const meals = state.currentPlan.meals || {};
     const mealKeys = Object.keys(meals);
     let checked = 0;
-    if (!IS_PRODUCTION) {
+    if (IS_PRODUCTION) {
+      try {
+        const { loadMealChecks } = await import('./api.js');
+        const data = await loadMealChecks(state.currentPlanId, todayIdx);
+        checked = data.filter(r => r.checked).length;
+      } catch (e) { /* silent */ }
+    } else {
       const allChecks = JSON.parse(localStorage.getItem('hh-meal-checks') || '{}');
       const dayChecks = allChecks[`${state.currentPlanId}_${todayIdx}`] || {};
       checked = mealKeys.filter(k => dayChecks[k]).length;
@@ -247,13 +253,34 @@ async function exportWeek(weekId) {
   try { dayNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}'); } catch { dayNotes = {}; }
 
   // Meal checks
-  let mealChecks;
-  try { mealChecks = JSON.parse(localStorage.getItem('hh-meal-checks') || '{}'); } catch { mealChecks = {}; }
+  let mealChecks = {};
+  if (IS_PRODUCTION) {
+    try {
+      const { loadMealChecks } = await import('./api.js');
+      const dayNames2 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      for (let d = 0; d < 7; d++) {
+        const data = await loadMealChecks(weekId, d);
+        const key = `${weekId}_${d}`;
+        mealChecks[key] = {};
+        data.forEach(r => { mealChecks[key][r.meal_key] = r.checked; });
+      }
+    } catch (e) { /* silent */ }
+  } else {
+    try { mealChecks = JSON.parse(localStorage.getItem('hh-meal-checks') || '{}'); } catch { mealChecks = {}; }
+  }
 
   // Bodyweight + body fat
-  let bwData, bfData;
-  try { bwData = JSON.parse(localStorage.getItem('hh-bodyweight') || '[]'); } catch { bwData = []; }
-  try { bfData = JSON.parse(localStorage.getItem('hh-bodyfat') || '[]'); } catch { bfData = []; }
+  let bwData = [], bfData = [];
+  if (IS_PRODUCTION) {
+    try {
+      const { loadBodyweightHistory, loadBodyfatHistory } = await import('./api.js');
+      bwData = await loadBodyweightHistory();
+      bfData = await loadBodyfatHistory();
+    } catch (e) { /* silent */ }
+  } else {
+    try { bwData = JSON.parse(localStorage.getItem('hh-bodyweight') || '[]'); } catch { bwData = []; }
+    try { bfData = JSON.parse(localStorage.getItem('hh-bodyfat') || '[]'); } catch { bfData = []; }
+  }
 
   // Compute week date range for filtering body metrics
   const weekEnd = new Date(plan.weekStart + 'T12:00:00');

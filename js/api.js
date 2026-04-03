@@ -143,3 +143,49 @@ export async function loadWorkoutCompletionRates() {
 export async function loadMealAdherenceRates() {
   return api('dashboard?type=adherence');
 }
+
+// ============================================
+// RPE LOGS
+// ============================================
+
+export async function loadRpe(planId, dayIndex) {
+  return api(`rpe?planId=${planId}&day=${dayIndex}`);
+}
+
+export async function upsertRpe(planId, dayIndex, exerciseIndex, rpe) {
+  return api('rpe', {
+    method: 'POST',
+    body: JSON.stringify({ planId, dayIndex, exerciseIndex, rpe }),
+  });
+}
+
+// ============================================
+// DAY NOTES
+// ============================================
+
+export async function loadDayNotes(planId, dayIndex) {
+  const data = await api(`day-notes?planId=${planId}&day=${dayIndex}`);
+  return data.length > 0 ? data[0].notes : '';
+}
+
+export async function upsertDayNotes(planId, dayIndex, notes) {
+  return api('day-notes', {
+    method: 'POST',
+    body: JSON.stringify({ planId, dayIndex, notes }),
+  });
+}
+
+// ============================================
+// STRETCH CHECKS
+// ============================================
+
+export async function loadStretchChecks(planId, dayIndex) {
+  return api(`stretch-checks?planId=${planId}&day=${dayIndex}`);
+}
+
+export async function upsertStretchCheck(planId, dayIndex, stretchType, stretchIndex, checked) {
+  return api('stretch-checks', {
+    method: 'POST',
+    body: JSON.stringify({ planId, dayIndex, stretchType, stretchIndex, checked }),
+  });
+}

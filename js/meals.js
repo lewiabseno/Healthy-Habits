@@ -137,11 +137,18 @@ export async function renderMeals(container) {
         return;
       }
       const today = new Date().toISOString().split('T')[0];
-      const bfData = getLocalBF();
-      const idx = bfData.findIndex(e => e.date === today);
-      if (idx >= 0) bfData[idx].value = parseFloat(val);
-      else bfData.push({ date: today, value: parseFloat(val) });
-      saveLocalBF(bfData);
+      if (IS_PRODUCTION) {
+        try {
+          const { upsertBodyfat } = await import('./api.js');
+          await upsertBodyfat(today, val);
+        } catch (e) { showToast('Failed to log body fat', 'error'); return; }
+      } else {
+        const bfData = getLocalBF();
+        const idx = bfData.findIndex(e => e.date === today);
+        if (idx >= 0) bfData[idx].value = parseFloat(val);
+        else bfData.push({ date: today, value: parseFloat(val) });
+        saveLocalBF(bfData);
+      }
       showToast('Body fat logged!', 'success');
       const lastLabel = document.querySelector('.body-metric-row:last-child .bw-inline-last');
       if (lastLabel) lastLabel.textContent = `${val}% (today)`;
