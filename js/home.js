@@ -136,7 +136,7 @@ export async function renderHome(container) {
         </div>
       </div>
       <div class="home-snap-card">
-        <div class="home-snap-icon">&#x2696;</div>
+        <div class="home-snap-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="2" stroke-linecap="round"><path d="M4 18a10 10 0 0120 0"/><path d="M12 18l3-6"/><circle cx="12" cy="18" r="1.5" fill="#8e8e93" stroke="none"/><circle cx="7" cy="14" r="0.5" fill="#8e8e93" stroke="none"/><circle cx="5" cy="17" r="0.5" fill="#8e8e93" stroke="none"/><circle cx="17" cy="14" r="0.5" fill="#8e8e93" stroke="none"/><circle cx="19" cy="17" r="0.5" fill="#8e8e93" stroke="none"/><circle cx="12" cy="10" r="0.5" fill="#8e8e93" stroke="none"/></svg></div>
         <div class="home-snap-body">
           <div class="home-snap-label">Weight</div>
           <div class="home-snap-value">${weightSummary}${lastBf ? ` \u00B7 ${lastBf.value}% BF` : ''}</div>
