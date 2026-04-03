@@ -118,7 +118,7 @@ export async function renderHome(container) {
   }
 
   container.innerHTML = `
-    <div class="section-header"><div class="section-title">Home</div><div class="section-subtitle">${todayName}</div></div>
+    <div class="section-header"><div class="section-title">Home</div><div class="section-subtitle">Today \u2014 ${todayName}, ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div></div>
 
     <div class="home-snapshot">
       <div class="home-snap-card" data-goto="workout">
@@ -240,23 +240,102 @@ async function exportWeek(weekId) {
   }
 
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  // Stretch checks
+  let stretchChecks;
+  try { stretchChecks = JSON.parse(localStorage.getItem('hh-stretch-checks') || '{}'); } catch { stretchChecks = {}; }
+
+  // Meal checks
+  let mealChecks;
+  try { mealChecks = JSON.parse(localStorage.getItem('hh-meal-checks') || '{}'); } catch { mealChecks = {}; }
+
+  // Bodyweight + body fat
+  let bwData, bfData;
+  try { bwData = JSON.parse(localStorage.getItem('hh-bodyweight') || '[]'); } catch { bwData = []; }
+  try { bfData = JSON.parse(localStorage.getItem('hh-bodyfat') || '[]'); } catch { bfData = []; }
+
+  // Compute week date range for filtering body metrics
+  const weekEnd = new Date(plan.weekStart + 'T12:00:00');
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndStr = weekEnd.toISOString().split('T')[0];
+  const weekBw = bwData.filter(d => d.date >= plan.weekStart && d.date <= weekEndStr);
+  const weekBf = bfData.filter(d => d.date >= plan.weekStart && d.date <= weekEndStr);
+  const latestBw = bwData.length > 0 ? bwData[bwData.length - 1] : null;
+  const latestBf = bfData.length > 0 ? bfData[bfData.length - 1] : null;
+
+  // Weekly change: compare this week's avg to previous week's avg
+  const prevStart = new Date(plan.weekStart + 'T12:00:00');
+  prevStart.setDate(prevStart.getDate() - 7);
+  const prevStartStr = prevStart.toISOString().split('T')[0];
+  const prevEndStr = new Date(prevStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
+  const prevBw = bwData.filter(d => d.date >= prevStartStr && d.date <= prevEndStr);
+  const prevBf = bfData.filter(d => d.date >= prevStartStr && d.date <= prevEndStr);
+  const avgBw = weekBw.length > 0 ? Math.round(weekBw.reduce((s, d) => s + d.weight, 0) / weekBw.length * 10) / 10 : null;
+  const avgPrevBw = prevBw.length > 0 ? Math.round(prevBw.reduce((s, d) => s + d.weight, 0) / prevBw.length * 10) / 10 : null;
+  const avgBf = weekBf.length > 0 ? Math.round(weekBf.reduce((s, d) => s + d.value, 0) / weekBf.length * 10) / 10 : null;
+  const avgPrevBf = prevBf.length > 0 ? Math.round(prevBf.reduce((s, d) => s + d.value, 0) / prevBf.length * 10) / 10 : null;
+
   const exportData = {
     weekLabel: plan.weekLabel || formatWeekRange(plan.weekStart),
     weekStart: plan.weekStart,
     exportedAt: new Date().toISOString(),
-    workoutSummary: (plan.workouts || []).map(w => ({
-      day: w.day,
-      dayName: w.dayName || dayNames[w.day],
-      title: w.type || w.title,
-      exercises: (w.exercises || []).map((ex, exIdx) => {
-        const sets = allLogs[w.day]?.[exIdx] || {};
-        const logged = Object.entries(sets)
-          .sort(([a], [b]) => parseInt(a) - parseInt(b))
-          .map(([, s]) => ({ weight: s.weight ? parseFloat(s.weight) : null, reps: s.reps ? parseInt(s.reps) : null }))
-          .filter(s => s.weight !== null || s.reps !== null);
-        return { name: ex.name, equipment: ex.equipment || '', targetSets: ex.sets, targetReps: ex.reps, logged };
-      }),
-    })),
+
+    bodyMetrics: {
+      currentWeight: latestBw?.weight || null,
+      currentBodyFat: latestBf?.value || null,
+      weeklyWeightChange: avgBw != null && avgPrevBw != null ? Math.round((avgBw - avgPrevBw) * 10) / 10 : null,
+      weeklyBodyFatChange: avgBf != null && avgPrevBf != null ? Math.round((avgBf - avgPrevBf) * 10) / 10 : null,
+      weekWeights: weekBw.map(d => ({ date: d.date, weight: d.weight })),
+      weekBodyFat: weekBf.map(d => ({ date: d.date, value: d.value })),
+    },
+
+    workoutSummary: (plan.workouts || []).map(w => {
+      // Warmup/cooldown completion
+      const warmupDone = (w.warmup || []).map((s, i) => {
+        const key = `${weekId}_${w.day}_warmup_${i}`;
+        return { name: typeof s === 'string' ? s : s.name, completed: !!stretchChecks[key] };
+      });
+      const cooldownDone = (w.cooldown || []).map((s, i) => {
+        const key = `${weekId}_${w.day}_cooldown_${i}`;
+        return { name: typeof s === 'string' ? s : s.name, completed: !!stretchChecks[key] };
+      });
+
+      return {
+        day: w.day,
+        dayName: w.dayName || dayNames[w.day],
+        title: w.type || w.title,
+        exercises: (w.exercises || []).map((ex, exIdx) => {
+          const sets = allLogs[w.day]?.[exIdx] || {};
+          const logged = Object.entries(sets)
+            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+            .map(([, s]) => ({ weight: s.weight ? parseFloat(s.weight) : null, reps: s.reps ? parseInt(s.reps) : null }))
+            .filter(s => s.weight !== null || s.reps !== null);
+          return { name: ex.name, equipment: ex.equipment || '', targetSets: ex.sets, targetReps: ex.reps, logged };
+        }),
+        warmup: warmupDone.length > 0 ? warmupDone : undefined,
+        cooldown: cooldownDone.length > 0 ? cooldownDone : undefined,
+      };
+    }),
+
+    mealsSummary: (() => {
+      const meals = plan.meals || {};
+      const mealKeys = Object.keys(meals);
+      const days = {};
+      for (let d = 0; d < 7; d++) {
+        const dayChecks = mealChecks[`${weekId}_${d}`] || {};
+        const eaten = mealKeys.filter(k => dayChecks[k]);
+        const skipped = mealKeys.filter(k => !dayChecks[k]);
+        if (eaten.length > 0 || skipped.length > 0) {
+          days[dayNames[d]] = {
+            eaten: eaten.map(k => meals[k].name),
+            skipped: skipped.map(k => meals[k].name),
+            caloriesEaten: eaten.reduce((s, k) => s + (meals[k].calories || 0), 0),
+            proteinEaten: eaten.reduce((s, k) => s + (meals[k].protein || 0), 0),
+          };
+        }
+      }
+      return days;
+    })(),
   };
 
   const json = JSON.stringify(exportData, null, 2);
