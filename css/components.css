@@ -406,16 +406,25 @@
   margin-top: 1px;
 }
 
-/* Inline bodyweight widget */
-.bw-inline-widget {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* Body metrics widget (weight + body fat) */
+.body-metrics-widget {
   margin: 0 12px 8px;
-  padding: 10px 14px;
   background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--card-shadow);
+}
+
+.body-metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.body-metric-divider {
+  height: 0.5px;
+  background: var(--border);
+  margin: 0 14px;
 }
 
 .bw-inline-left {

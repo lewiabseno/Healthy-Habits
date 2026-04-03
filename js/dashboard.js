@@ -199,7 +199,125 @@ function renderDemoDashboard(container) {
     });
   }
 
-  if (exerciseNames.length === 0 && bwData.length === 0) {
+  // Body fat trend chart
+  let bfData;
+  try { bfData = JSON.parse(localStorage.getItem('hh-bodyfat') || '[]'); } catch { bfData = []; }
+  if (bfData.length >= 1) {
+    bfData.sort((a, b) => a.date.localeCompare(b.date));
+    const bfSection = document.createElement('div');
+    bfSection.className = 'dash-section';
+    const bfRanges = [
+      { key: '1W', label: '1W', days: 7 },
+      { key: '2W', label: '2W', days: 14 },
+      { key: '1M', label: '1M', days: 30 },
+      { key: '3M', label: '3M', days: 90 },
+      { key: '6M', label: '6M', days: 180 },
+      { key: '1Y', label: '1Y', days: 365 },
+      { key: 'ALL', label: 'All', days: 99999 },
+    ];
+    const bfPills = bfRanges.map(r =>
+      `<button class="range-pill${r.key === 'ALL' ? ' active' : ''}" data-range="${r.key}" data-days="${r.days}">${r.label}</button>`
+    ).join('');
+    bfSection.innerHTML = `
+      <div class="dash-section-title">Body Fat Trend</div>
+      <div class="dash-stat-header" id="bfStatHeader"></div>
+      <div class="range-pills">${bfPills}</div>
+      <div class="chart-card"><div class="chart-wrap"><canvas id="bfDemoChart"></canvas></div></div>`;
+    container.appendChild(bfSection);
+
+    let bfChart = null;
+
+    const bfChartOpts = {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 300 },
+      spanGaps: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          displayColors: false, backgroundColor: '#1c1c1e',
+          titleFont: { size: 12 }, bodyFont: { size: 14, weight: '600' },
+          padding: 8, cornerRadius: 8,
+          callbacks: { label: ctx => ctx.parsed.y != null ? `${ctx.parsed.y}%` : '' },
+        },
+      },
+      elements: {
+        point: { radius: 0, hoverRadius: 5, hoverBackgroundColor: '#ff9f0a', hoverBorderColor: '#fff', hoverBorderWidth: 2 },
+        line: { borderWidth: 2.5 },
+      },
+      scales: {
+        x: { ticks: { color: '#8e8e93', font: { size: 10 }, maxTicksLimit: 6 }, grid: { display: false }, border: { display: false } },
+        y: { grace: '15%', ticks: { color: '#8e8e93', font: { size: 10 }, callback: v => v + '%', maxTicksLimit: 5 }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } },
+      },
+    };
+
+    function renderBfChart(days) {
+      const today = new Date().toISOString().split('T')[0];
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      const allValid = bfData.filter(d => d.date <= today);
+      const filtered = days >= 99999 ? allValid : allValid.filter(d => d.date >= cutoffStr);
+      const chartData = filtered.length > 0 ? filtered : allValid;
+
+      // Update stat header
+      const statEl = document.getElementById('bfStatHeader');
+      if (statEl && chartData.length > 0) {
+        const current = chartData[chartData.length - 1].value;
+        const first = chartData[0].value;
+        const diff = Math.round((current - first) * 10) / 10;
+        const diffClass = diff < 0 ? 'down' : diff > 0 ? 'up' : 'neutral';
+        const diffSign = diff > 0 ? '+' : '';
+        statEl.innerHTML = `
+          <span class="dash-stat-value">${current}<small>%</small></span>
+          <span class="dash-stat-change ${diffClass}">${diffSign}${diff}%</span>`;
+      }
+
+      const todayLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const newLabels = chartData.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+      const newData = chartData.map(d => d.value);
+      if (chartData.length === 0 || chartData[chartData.length - 1].date !== today) {
+        newLabels.push(todayLabel);
+        newData.push(null);
+      }
+      const bfTension = newData.length > 10 ? 0.3 : 0;
+
+      if (bfChart) {
+        bfChart.data.labels = newLabels;
+        bfChart.data.datasets[0].data = newData;
+        bfChart.data.datasets[0].tension = bfTension;
+        bfChart.update();
+        return;
+      }
+      bfChart = new Chart(document.getElementById('bfDemoChart'), {
+        type: 'line',
+        data: {
+          labels: newLabels,
+          datasets: [{
+            data: newData,
+            borderColor: '#ff9f0a',
+            backgroundColor: 'rgba(255,159,10,0.08)',
+            fill: true,
+            tension: bfTension,
+          }]
+        },
+        options: bfChartOpts,
+      });
+      charts.push(bfChart);
+    }
+
+    renderBfChart(99999);
+
+    bfSection.querySelectorAll('.range-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        bfSection.querySelectorAll('.range-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        renderBfChart(parseInt(pill.dataset.days));
+      });
+    });
+  }
+
+  if (exerciseNames.length === 0 && bwData.length === 0 && bfData.length === 0) {
     container.innerHTML += `<div class="empty-state">No data yet.<br>Log sets in the Workout tab<br>to see your progress here.</div>`;
     return;
   }

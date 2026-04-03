@@ -20,6 +20,10 @@ function getLocalBW() {
   try { return JSON.parse(localStorage.getItem('hh-bodyweight') || '[]'); } catch { return []; }
 }
 function saveLocalBW(arr) { localStorage.setItem('hh-bodyweight', JSON.stringify(arr)); }
+function getLocalBF() {
+  try { return JSON.parse(localStorage.getItem('hh-bodyfat') || '[]'); } catch { return []; }
+}
+function saveLocalBF(arr) { localStorage.setItem('hh-bodyfat', JSON.stringify(arr)); }
 function getLocalGroceryChecks() {
   try { return JSON.parse(localStorage.getItem('hh-grocery-checks') || '{}'); } catch { return {}; }
 }
@@ -121,9 +125,31 @@ export async function renderMeals(container) {
         saveLocalBW(bwData);
       }
       showToast('Weight logged!', 'success');
-      // Update widget in-place instead of full re-render
-      const lastLabel = document.querySelector('.bw-inline-last');
+      const lastLabel = document.querySelector('.body-metric-row:first-child .bw-inline-last');
       if (lastLabel) lastLabel.textContent = `${val} lbs (today)`;
+      if (input) input.value = '';
+    });
+  }
+
+  // Body fat log button
+  const bfBtn = document.getElementById('bfInlineBtn');
+  if (bfBtn) {
+    bfBtn.addEventListener('click', async () => {
+      const input = document.getElementById('bfInlineInput');
+      const val = input?.value?.trim();
+      if (!val || isNaN(parseFloat(val))) {
+        showToast('Enter a valid body fat %', 'error');
+        return;
+      }
+      const today = new Date().toISOString().split('T')[0];
+      const bfData = getLocalBF();
+      const idx = bfData.findIndex(e => e.date === today);
+      if (idx >= 0) bfData[idx].value = parseFloat(val);
+      else bfData.push({ date: today, value: parseFloat(val) });
+      saveLocalBF(bfData);
+      showToast('Body fat logged!', 'success');
+      const lastLabel = document.querySelector('.body-metric-row:last-child .bw-inline-last');
+      if (lastLabel) lastLabel.textContent = `${val}% (today)`;
       if (input) input.value = '';
     });
   }
@@ -327,17 +353,33 @@ async function renderMealDay() {
 
 function getBodyweightWidget() {
   const bwData = getLocalBW();
-  const last = bwData.length > 0 ? bwData[bwData.length - 1] : null;
+  const lastBw = bwData.length > 0 ? bwData[bwData.length - 1] : null;
+  const bfData = getLocalBF();
+  const lastBf = bfData.length > 0 ? bfData[bfData.length - 1] : null;
   const today = new Date().toISOString().split('T')[0];
-  const loggedToday = last && last.date === today;
-  return `<div class="bw-inline-widget">
-    <div class="bw-inline-left">
-      <span class="bw-inline-label">Weight</span>
-      ${last ? `<span class="bw-inline-last">${last.weight} lbs${loggedToday ? ' (today)' : ''}</span>` : '<span class="bw-inline-last">Not logged</span>'}
+  const bwToday = lastBw && lastBw.date === today;
+  const bfToday = lastBf && lastBf.date === today;
+  return `<div class="body-metrics-widget">
+    <div class="body-metric-row">
+      <div class="bw-inline-left">
+        <span class="bw-inline-label">Weight</span>
+        ${lastBw ? `<span class="bw-inline-last">${lastBw.weight} lbs${bwToday ? ' (today)' : ''}</span>` : '<span class="bw-inline-last">Not logged</span>'}
+      </div>
+      <div class="bw-inline-right">
+        <input class="bw-inline-input" type="number" inputmode="decimal" placeholder="${lastBw ? lastBw.weight : 'lbs'}" id="bwInlineInput"/>
+        <button class="bw-inline-btn" id="bwInlineBtn">Log</button>
+      </div>
     </div>
-    <div class="bw-inline-right">
-      <input class="bw-inline-input" type="number" inputmode="decimal" placeholder="${last ? last.weight : 'lbs'}" id="bwInlineInput"/>
-      <button class="bw-inline-btn" id="bwInlineBtn">Log</button>
+    <div class="body-metric-divider"></div>
+    <div class="body-metric-row">
+      <div class="bw-inline-left">
+        <span class="bw-inline-label">Body Fat</span>
+        ${lastBf ? `<span class="bw-inline-last">${lastBf.value}%${bfToday ? ' (today)' : ''}</span>` : '<span class="bw-inline-last">Not logged</span>'}
+      </div>
+      <div class="bw-inline-right">
+        <input class="bw-inline-input" type="number" inputmode="decimal" placeholder="${lastBf ? lastBf.value : '%'}" id="bfInlineInput"/>
+        <button class="bw-inline-btn" id="bfInlineBtn">Log</button>
+      </div>
     </div>
   </div>`;
 }
