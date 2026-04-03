@@ -16,10 +16,9 @@ export async function renderDashboard(container) {
   }
 
   if (IS_PRODUCTION) {
-    // Full production dashboard (D1 backend)
-    const { renderBodyweightWidget, renderBodyweightChart } = await import('./bodyweight.js');
-    renderBodyweightWidget(container);
+    // Full production dashboard (D1 backend) — charts only, no input widgets
     try {
+      const { renderBodyweightChart } = await import('./bodyweight.js');
       const bwChart = await renderBodyweightChart(container);
       if (bwChart) charts.push(bwChart);
     } catch (e) { /* silent */ }
