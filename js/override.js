@@ -1,9 +1,7 @@
 import { state } from './state.js';
 import { showToast } from './toast.js';
-import { SUPABASE_URL } from './config.js';
+import { IS_PRODUCTION } from './config.js';
 import { renderCurrentTab } from './router.js';
-
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
 
 const overlay = document.getElementById('overrideModal');
 const titleEl = document.getElementById('overrideTitle');
@@ -89,7 +87,7 @@ async function handleOverride() {
   submitBtn.textContent = 'Replacing...';
 
   try {
-    if (isConfigured) {
+    if (IS_PRODUCTION) {
       const { updateWeek } = await import('./api.js');
       // Fetch current plan, modify, save back
       const plan = { ...state.currentPlan };

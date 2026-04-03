@@ -98,16 +98,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script type="module">
-import { SUPABASE_URL } from './js/config.js';
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
-if (isConfigured) {
-  const s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-  s.onload = () => import('./js/app.js');
-  document.head.appendChild(s);
-} else {
-  import('./js/app.js');
-}
+import('./js/app.js');
 </script>
 </body>
 </html>

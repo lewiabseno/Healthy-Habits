@@ -1,8 +1,6 @@
 import { state, formatWeekRange, getWeekPickerHtml, initWeekNav, normalizeExName } from './state.js';
 import { showToast } from './toast.js';
-import { SUPABASE_URL } from './config.js';
-
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
+import { IS_PRODUCTION } from './config.js';
 
 let logs = {}; // { exerciseIndex: { setIndex: { weight, reps } } }
 let prevLogs = {}; // previous week's logs for placeholders
@@ -48,7 +46,7 @@ export async function renderWorkout(container) {
 
   // Load logs + previous week's logs for placeholders
   if (workout) {
-    if (isConfigured && state.currentPlanId) {
+    if (IS_PRODUCTION && state.currentPlanId) {
       const { loadWorkoutLogs } = await import('./api.js');
       await loadRemoteLogs(loadWorkoutLogs, state.currentDay);
     } else {
@@ -525,13 +523,13 @@ function handleSetInput(input, container) {
   const timerKey = `${exIdx}_${setIdx}`;
   if (debounceTimers[timerKey]) clearTimeout(debounceTimers[timerKey]);
   debounceTimers[timerKey] = setTimeout(async () => {
-    if (isConfigured) {
+    if (IS_PRODUCTION) {
       try {
         const { upsertSet } = await import('./api.js');
         const workout = (state.currentPlan.workouts || []).find(w => w.day === state.currentDay);
         const exName = workout?.exercises[exIdx]?.name || '';
         const sl = logs[exIdx][setIdx];
-        await upsertSet(state.userId, state.currentPlanId, state.currentDay, exIdx, setIdx, exName, sl.weight, sl.reps);
+        await upsertSet(state.currentPlanId, state.currentDay, exIdx, setIdx, exName, sl.weight, sl.reps);
       } catch (e) {
         showToast('Failed to save set', 'error');
       }

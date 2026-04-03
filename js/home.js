@@ -1,8 +1,6 @@
 import { state, formatWeekRange, getCurrentMonday } from './state.js';
 import { showToast } from './toast.js';
-import { SUPABASE_URL } from './config.js';
-
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
+import { IS_PRODUCTION } from './config.js';
 
 function getNextMonday() {
   const d = new Date();
@@ -35,7 +33,7 @@ export async function renderHome(container) {
     const meals = state.currentPlan.meals || {};
     const mealKeys = Object.keys(meals);
     let checked = 0;
-    if (!isConfigured) {
+    if (!IS_PRODUCTION) {
       const allChecks = JSON.parse(localStorage.getItem('hh-meal-checks') || '{}');
       const dayChecks = allChecks[`${state.currentPlanId}_${todayIdx}`] || {};
       checked = mealKeys.filter(k => dayChecks[k]).length;
@@ -149,7 +147,7 @@ export async function renderHome(container) {
       <button class="home-import-btn" id="homeImportBtn">+ Import Week</button>
     </div>
     <div class="home-week-list">${weekSectionsHtml}</div>
-    ${isConfigured ? '<div style="padding:20px 12px"><button class="reset-btn" id="homeLogoutBtn">Log Out</button></div>' : ''}
+    ${IS_PRODUCTION ? '<div style="padding:20px 12px"><button class="reset-btn" id="homeLogoutBtn">Log Out</button></div>' : ''}
     <div style="height:20px"></div>`;
 
   // Snapshot card navigation
@@ -203,21 +201,22 @@ export async function renderHome(container) {
 async function exportWeek(weekId) {
   let plan, allLogs;
 
-  if (isConfigured) {
-    const { fetchPlan } = await import('./api.js');
+  if (IS_PRODUCTION) {
+    const { fetchPlan, loadWorkoutLogs } = await import('./api.js');
     const p = await fetchPlan(weekId);
     plan = p.plan_data;
-    // Load remote logs
-    const { sb } = await import('./supabase.js');
-    const { data } = await sb.from('workout_logs')
-      .select('day_index, exercise_index, set_index, weight, reps')
-      .eq('plan_id', weekId).order('day_index').order('exercise_index').order('set_index');
+    // Load all workout logs for this week (all days)
     allLogs = {};
-    (data || []).forEach(row => {
-      if (!allLogs[row.day_index]) allLogs[row.day_index] = {};
-      if (!allLogs[row.day_index][row.exercise_index]) allLogs[row.day_index][row.exercise_index] = {};
-      allLogs[row.day_index][row.exercise_index][row.set_index] = { weight: row.weight != null ? String(row.weight) : '', reps: row.reps != null ? String(row.reps) : '' };
-    });
+    for (const w of (plan.workouts || [])) {
+      const data = await loadWorkoutLogs(weekId, w.day);
+      if (data && data.length > 0) {
+        allLogs[w.day] = {};
+        data.forEach(row => {
+          if (!allLogs[w.day][row.exercise_index]) allLogs[w.day][row.exercise_index] = {};
+          allLogs[w.day][row.exercise_index][row.set_index] = { weight: row.weight != null ? String(row.weight) : '', reps: row.reps != null ? String(row.reps) : '' };
+        });
+      }
+    }
   } else {
     const week = state.weeks.find(w => (w.id || w.weekStart) === weekId);
     if (!week) { showToast('Week not found', 'error'); return; }

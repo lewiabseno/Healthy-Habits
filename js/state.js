@@ -1,3 +1,5 @@
+import { IS_PRODUCTION } from './config.js';
+
 // App-wide state
 export const state = {
   userId: null,
@@ -138,9 +140,7 @@ export function initWeekNav(renderFn, container) {
 
 export async function handleWeekSwitch(weekId, renderFn, container) {
   if (weekId === state.currentPlanId) return;
-  const { SUPABASE_URL } = await import('./config.js');
-  const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
-  if (isConfigured) {
+  if (IS_PRODUCTION) {
     const { fetchPlan } = await import('./api.js');
     const plan = await fetchPlan(weekId);
     state.currentPlanId = weekId;

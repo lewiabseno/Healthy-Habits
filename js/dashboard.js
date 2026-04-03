@@ -1,8 +1,6 @@
 import { state, formatDate } from './state.js';
 import { showToast } from './toast.js';
-import { SUPABASE_URL } from './config.js';
-
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
+import { IS_PRODUCTION } from './config.js';
 
 let charts = [];
 
@@ -17,8 +15,8 @@ export async function renderDashboard(container) {
     return;
   }
 
-  if (isConfigured) {
-    // Full Supabase dashboard
+  if (IS_PRODUCTION) {
+    // Full production dashboard (D1 backend)
     const { renderBodyweightWidget, renderBodyweightChart } = await import('./bodyweight.js');
     renderBodyweightWidget(container);
     try {
@@ -437,7 +435,7 @@ function renderDemoDashboard(container) {
 
 async function renderExerciseProgression(parentEl) {
   const { loadAllExerciseNames, loadExerciseProgression } = await import('./api.js');
-  const names = await loadAllExerciseNames(state.userId);
+  const names = await loadAllExerciseNames();
   if (names.length === 0) return;
 
   const section = document.createElement('div');
@@ -454,7 +452,7 @@ async function renderExerciseProgression(parentEl) {
 
   async function loadExercise(idx) {
     const name = names[idx];
-    const data = await loadExerciseProgression(state.userId, name);
+    const data = await loadExerciseProgression(name);
 
     if (currentChart) { currentChart.destroy(); charts = charts.filter(c => c !== currentChart); }
     if (data.length >= 1) {
@@ -496,7 +494,7 @@ async function renderExerciseProgression(parentEl) {
 
 async function renderPersonalBests(parentEl) {
   const { loadPersonalBests } = await import('./api.js');
-  const bests = await loadPersonalBests(state.userId);
+  const bests = await loadPersonalBests();
   if (bests.length === 0) return;
 
   const section = document.createElement('div');
@@ -515,7 +513,7 @@ async function renderPersonalBests(parentEl) {
 
 async function renderWorkoutCompletion(parentEl) {
   const { loadWorkoutCompletionRates } = await import('./api.js');
-  const data = await loadWorkoutCompletionRates(state.userId);
+  const data = await loadWorkoutCompletionRates();
   if (data.length === 0) return;
 
   const section = document.createElement('div');
@@ -549,7 +547,7 @@ async function renderWorkoutCompletion(parentEl) {
 
 async function renderMealAdherence(parentEl) {
   const { loadMealAdherenceRates } = await import('./api.js');
-  const data = await loadMealAdherenceRates(state.userId);
+  const data = await loadMealAdherenceRates();
   if (data.length === 0) return;
 
   const section = document.createElement('div');

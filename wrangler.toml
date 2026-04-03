@@ -1,0 +1,10 @@
+name = "healthy-habits"
+compatibility_date = "2024-01-01"
+
+# D1 database binding
+# After creating: wrangler d1 create healthy-habits
+# Replace the database_id below with your actual ID
+[[d1_databases]]
+binding = "DB"
+database_name = "healthy-habits"
+database_id = "YOUR_D1_DATABASE_ID"

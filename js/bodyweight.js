@@ -19,11 +19,10 @@ export function renderBodyweightWidget(parentEl) {
   const btn = document.getElementById('bwLogBtn');
   const lastEl = document.getElementById('bwLast');
 
-  // Show last logged weight
-  loadBodyweightHistory(state.userId).then(data => {
+  loadBodyweightHistory().then(data => {
     if (data.length > 0) {
       const last = data[data.length - 1];
-      lastEl.textContent = `Last: ${last.weight} ${last.unit} on ${new Date(last.recorded_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      lastEl.textContent = `Last: ${last.weight} ${last.unit || 'lbs'} on ${new Date(last.recorded_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     }
   });
 
@@ -36,7 +35,7 @@ export function renderBodyweightWidget(parentEl) {
     btn.disabled = true;
     try {
       const today = new Date().toISOString().split('T')[0];
-      await upsertBodyweight(state.userId, today, val, 'lbs');
+      await upsertBodyweight(today, val, 'lbs');
       showToast('Weight logged!', 'success');
       input.value = '';
       lastEl.textContent = `Last: ${val} lbs on ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
@@ -48,7 +47,7 @@ export function renderBodyweightWidget(parentEl) {
 }
 
 export async function renderBodyweightChart(parentEl) {
-  const data = await loadBodyweightHistory(state.userId);
+  const data = await loadBodyweightHistory();
   if (data.length < 2) return null;
 
   const section = document.createElement('div');

@@ -1,8 +1,6 @@
 import { state, formatWeekRange, getWeekPickerHtml, initWeekNav } from './state.js';
 import { showToast } from './toast.js';
-import { SUPABASE_URL } from './config.js';
-
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
+import { IS_PRODUCTION } from './config.js';
 
 let mealChecks = {};
 let groceryChecks = {};
@@ -108,10 +106,10 @@ export async function renderMeals(container) {
         return;
       }
       const today = new Date().toISOString().split('T')[0];
-      if (isConfigured) {
+      if (IS_PRODUCTION) {
         try {
           const { upsertBodyweight } = await import('./api.js');
-          await upsertBodyweight(state.userId, today, val, 'lbs');
+          await upsertBodyweight(today, val, 'lbs');
         } catch (e) { showToast('Failed to log weight', 'error'); return; }
       } else {
         const bwData = getLocalBW();
@@ -159,10 +157,10 @@ export async function renderMeals(container) {
         e.stopPropagation();
         const key = el.closest('.meal-row').dataset.key;
         mealChecks[key] = !mealChecks[key];
-        if (isConfigured) {
+        if (IS_PRODUCTION) {
           try {
             const { upsertMealCheck } = await import('./api.js');
-            await upsertMealCheck(state.userId, state.currentPlanId, key, state.currentDay, mealChecks[key]);
+            await upsertMealCheck(state.currentPlanId, key, state.currentDay, mealChecks[key]);
           } catch (e2) { showToast('Failed to save', 'error'); mealChecks[key] = !mealChecks[key]; }
         } else {
           const all = getLocalMealChecks();
@@ -190,10 +188,10 @@ export async function renderMeals(container) {
         const idx = parseInt(el.dataset.idx);
         const key = `${cat}_${idx}`;
         groceryChecks[key] = !groceryChecks[key];
-        if (isConfigured) {
+        if (IS_PRODUCTION) {
           try {
             const { upsertGroceryCheck } = await import('./api.js');
-            await upsertGroceryCheck(state.userId, state.currentPlanId, cat, idx, groceryChecks[key]);
+            await upsertGroceryCheck(state.currentPlanId, cat, idx, groceryChecks[key]);
           } catch (e) { showToast('Failed to save', 'error'); groceryChecks[key] = !groceryChecks[key]; }
         } else {
           const all = getLocalGroceryChecks();
@@ -207,13 +205,13 @@ export async function renderMeals(container) {
     document.getElementById('resetGrocery')?.addEventListener('click', async () => {
       if (!confirm('Reset all grocery checkboxes?')) return;
       groceryChecks = {};
-      if (isConfigured) {
+      if (IS_PRODUCTION) {
         try {
           const { upsertGroceryCheck } = await import('./api.js');
           const grocery = state.currentPlan.grocery || {};
           for (const cat of Object.keys(grocery)) {
             for (let i = 0; i < grocery[cat].length; i++) {
-              await upsertGroceryCheck(state.userId, state.currentPlanId, cat, i, false);
+              await upsertGroceryCheck(state.currentPlanId, cat, i, false);
             }
           }
         } catch (e) { showToast('Failed to reset', 'error'); }
@@ -237,7 +235,7 @@ async function renderMealDay() {
   if (mealKeys.length === 0) return `<div class="empty-state">No meals in this week's plan.</div>`;
 
   // Load checks
-  if (isConfigured && state.currentPlanId) {
+  if (IS_PRODUCTION && state.currentPlanId) {
     const { loadMealChecks } = await import('./api.js');
     mealChecks = {};
     try {
@@ -399,7 +397,7 @@ async function renderGroceryInline() {
   if (categories.length === 0) return `<div class="empty-state">No grocery items in this week's plan.</div>`;
 
   // Load checks
-  if (isConfigured && state.currentPlanId) {
+  if (IS_PRODUCTION && state.currentPlanId) {
     const { loadGroceryChecks } = await import('./api.js');
     groceryChecks = {};
     try {

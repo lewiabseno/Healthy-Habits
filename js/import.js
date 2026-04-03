@@ -1,9 +1,7 @@
 import { state, formatWeekRange, getCurrentMonday } from './state.js';
 import { showToast } from './toast.js';
-import { SUPABASE_URL } from './config.js';
+import { IS_PRODUCTION } from './config.js';
 import { renderCurrentTab } from './router.js';
-
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
 
 const overlay = document.getElementById('importModal');
 const textarea = document.getElementById('importJson');
@@ -128,9 +126,9 @@ async function handleImport() {
   submitBtn.textContent = 'Importing...';
 
   try {
-    if (isConfigured) {
+    if (IS_PRODUCTION) {
       const { createWeek, updateWeek, findWeekByDate } = await import('./api.js');
-      const existing = await findWeekByDate(state.userId, json.weekStart);
+      const existing = await findWeekByDate(json.weekStart);
       if (existing) {
         const overwrite = await confirmOverwrite(json.weekStart);
         if (!overwrite) {
@@ -141,7 +139,7 @@ async function handleImport() {
         await updateWeek(existing.id, json, formatWeekRange(json.weekStart));
         showToast('Week updated!', 'success');
       } else {
-        await createWeek(state.userId, json.weekStart, formatWeekRange(json.weekStart), json);
+        await createWeek(json.weekStart, formatWeekRange(json.weekStart), json);
         showToast('Week imported!', 'success');
       }
       closeModal();
