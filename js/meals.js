@@ -56,7 +56,7 @@ export async function renderMeals(container) {
 
   container.innerHTML = `
     <div class="section-header"><div class="section-title">Meals</div>${getWeekPickerHtml()}</div>
-    <div class="day-pills">${pillsHtml}</div>
+    <div class="day-pills-wrap"><div class="day-pills">${pillsHtml}</div></div>
     ${bodyHtml}`;
 
   // Center active pill
@@ -102,8 +102,9 @@ export async function renderMeals(container) {
     bwBtn.addEventListener('click', async () => {
       const input = document.getElementById('bwInlineInput');
       const val = input?.value?.trim();
-      if (!val || isNaN(parseFloat(val))) {
-        showToast('Enter a valid weight', 'error');
+      const num = parseFloat(val);
+      if (!val || isNaN(num) || num <= 0 || num > 999) {
+        showToast('Enter a valid weight (1-999 lbs)', 'error');
         return;
       }
       const today = new Date().toISOString().split('T')[0];
@@ -132,8 +133,9 @@ export async function renderMeals(container) {
     bfBtn.addEventListener('click', async () => {
       const input = document.getElementById('bfInlineInput');
       const val = input?.value?.trim();
-      if (!val || isNaN(parseFloat(val))) {
-        showToast('Enter a valid body fat %', 'error');
+      const num = parseFloat(val);
+      if (!val || isNaN(num) || num <= 0 || num > 60) {
+        showToast('Enter a valid body fat % (1-60)', 'error');
         return;
       }
       const today = new Date().toISOString().split('T')[0];

@@ -21,6 +21,9 @@ export function initOverride() {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeModal();
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+  });
 }
 
 export function openOverrideModal(type, dayIndex) {

@@ -42,6 +42,10 @@ export function formatWeekRange(mondayStr) {
   return `${mFmt} - ${sFmt}`;
 }
 
+export function normalizeExName(name) {
+  return (name || '').trim().toLowerCase();
+}
+
 export function getWeekPickerHtml() {
   if (!state.currentPlan?.weekStart) return '';
   const weeks = state.weeks || [];

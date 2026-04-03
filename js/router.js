@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { renderWorkout } from './workout.js';
+import { renderWorkout, stopRestTimer } from './workout.js';
 import { renderMeals } from './meals.js';
 import { renderDashboard } from './dashboard.js';
 import { renderHome } from './home.js';
@@ -31,6 +31,7 @@ export async function navigate() {
   const tab = renderers[hash] ? hash : 'home';
   state.currentTab = tab;
   state.expandedExercise = null;
+  stopRestTimer();
 
   tabBtns.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);

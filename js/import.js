@@ -18,6 +18,9 @@ export function initImport() {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeModal();
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+  });
 }
 
 function openModal() {

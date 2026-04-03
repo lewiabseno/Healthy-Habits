@@ -246,6 +246,31 @@
   display: none;
 }
 
+.day-pills-wrap {
+  position: relative;
+}
+
+.day-pills-wrap::before,
+.day-pills-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.day-pills-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg), transparent);
+}
+
+.day-pills-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg), transparent);
+}
+
 .day-pill {
   flex-shrink: 0;
   padding: 10px 18px;

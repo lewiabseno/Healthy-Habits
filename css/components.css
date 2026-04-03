@@ -301,6 +301,78 @@
   gap: 6px;
 }
 
+/* RPE selector */
+.rpe-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 2px;
+  border-top: 0.5px solid var(--border-light);
+  margin-top: 6px;
+}
+
+.rpe-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.rpe-select {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg);
+  font-family: inherit;
+  min-height: 34px;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%238e8e93' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+/* Day notes */
+.day-notes {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 0 12px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: var(--card);
+  resize: none;
+  min-height: 40px;
+  max-height: 80px;
+  line-height: 1.5;
+}
+
+.day-notes:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.day-notes::placeholder {
+  color: var(--text-quaternary);
+}
+
+/* Day pill logged indicator */
+.day-pill.has-data::after {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  margin: 3px auto 0;
+}
+
 /* Workout sub-tabs (Warm-Up / Workout / Cool-Down) */
 .workout-subtabs {
   display: flex;

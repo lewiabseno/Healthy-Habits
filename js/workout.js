@@ -1,4 +1,4 @@
-import { state, formatWeekRange, getWeekPickerHtml, initWeekNav } from './state.js';
+import { state, formatWeekRange, getWeekPickerHtml, initWeekNav, normalizeExName } from './state.js';
 import { showToast } from './toast.js';
 import { SUPABASE_URL } from './config.js';
 
@@ -57,9 +57,18 @@ export async function renderWorkout(container) {
     loadPreviousLogs(state.currentDay);
   }
 
+  // Check which days have logged data
+  const allLogData = getLocalLogs();
+  const daysWithData = new Set();
+  for (let d = 0; d < 7; d++) {
+    const key = `${state.currentPlanId}_${d}`;
+    if (allLogData[key] && Object.keys(allLogData[key]).length > 0) daysWithData.add(d);
+  }
+
   const pillsHtml = dayNames.map((name, i) => {
     const active = i === state.currentDay;
-    return `<button class="day-pill${active ? ' active' : ''}" data-day="${i}">${name}</button>`;
+    const hasData = daysWithData.has(i);
+    return `<button class="day-pill${active ? ' active' : ''}${hasData ? ' has-data' : ''}" data-day="${i}">${name}</button>`;
   }).join('');
 
   const dateLabel = `${dayNames[state.currentDay]}, ${formatDayDate(state.currentDay)}`;
@@ -104,6 +113,10 @@ export async function renderWorkout(container) {
         <div class="card-group">${renderExercises(workout, state.currentDay)}</div>`;
     }
 
+    const notesKey = `${state.currentPlanId}_${state.currentDay}_notes`;
+    const allNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}');
+    const dayNotes = allNotes[notesKey] || '';
+
     bodyHtml = `
       <div class="day-header">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -118,12 +131,13 @@ export async function renderWorkout(container) {
         </div>
       </div>
       ${subtabsHtml}
+      <textarea class="day-notes" id="dayNotesInput" placeholder="How are you feeling? Energy, soreness, sleep...">${dayNotes}</textarea>
       ${contentHtml}`;
   }
 
   container.innerHTML = `
     <div class="section-header"><div class="section-title">Workout</div>${getWeekPickerHtml()}</div>
-    <div class="day-pills">${pillsHtml}</div>
+    <div class="day-pills-wrap"><div class="day-pills">${pillsHtml}</div></div>
     ${bodyHtml}`;
 
   // Center active pill
@@ -170,6 +184,31 @@ export async function renderWorkout(container) {
       openOverrideModal('workout', state.currentDay);
     });
   }
+
+  // Day notes handler
+  const notesInput = document.getElementById('dayNotesInput');
+  if (notesInput) {
+    let notesTimer;
+    notesInput.addEventListener('input', () => {
+      clearTimeout(notesTimer);
+      notesTimer = setTimeout(() => {
+        const allNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}');
+        allNotes[`${state.currentPlanId}_${state.currentDay}_notes`] = notesInput.value;
+        localStorage.setItem('hh-day-notes', JSON.stringify(allNotes));
+      }, 500);
+    });
+  }
+
+  // RPE select handler
+  container.querySelectorAll('.rpe-select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const exIdx = sel.dataset.ex;
+      const rpeKey = `${state.currentPlanId}_${state.currentDay}_rpe_${exIdx}`;
+      const allRpe = JSON.parse(localStorage.getItem('hh-rpe') || '{}');
+      allRpe[rpeKey] = sel.value;
+      localStorage.setItem('hh-rpe', JSON.stringify(allRpe));
+    });
+  });
 
   // Timer skip button
   const skipBtn = document.getElementById('timerSkipBtn');
@@ -286,7 +325,7 @@ function loadPreviousLogs(dayIndex) {
 
       // Find matching exercise by name in any day of that week
       for (const wd of weekPlan.workouts) {
-        const matchExIdx = (wd.exercises || []).findIndex(e => e.name === ex.name);
+        const matchExIdx = (wd.exercises || []).findIndex(e => normalizeExName(e.name) === normalizeExName(ex.name));
         if (matchExIdx >= 0) {
           const logKey = `${weekId}_${wd.day}`;
           const dayLogs = allLogData[logKey];
@@ -392,10 +431,23 @@ function renderExercises(workout, dayIndex) {
           </div>`
         : '';
 
+      // RPE selector
+      const rpeKey = `${state.currentPlanId}_${state.currentDay}_rpe_${exIdx}`;
+      const allRpe = JSON.parse(localStorage.getItem('hh-rpe') || '{}');
+      const currentRpe = allRpe[rpeKey] || '';
+      const rpeOpts = ['', '6', '7', '7.5', '8', '8.5', '9', '9.5', '10'].map(v =>
+        `<option value="${v}"${v === currentRpe ? ' selected' : ''}>${v || 'RPE'}</option>`
+      ).join('');
+      const rpeHtml = `<div class="rpe-row">
+        <span class="rpe-label">Difficulty</span>
+        <select class="rpe-select" data-ex="${exIdx}">${rpeOpts}</select>
+      </div>`;
+
       setArea = `<div class="set-area">
         ${restSetHtml}
         <div class="set-header"><span></span><span>${isBodyweight ? '' : weightLabel}</span><span>${isFailure ? 'Reps (failure)' : 'Reps'}</span></div>
         ${setRows}
+        ${rpeHtml}
         ${timerHtml}
         ${restExHtml}
       </div>`;
@@ -453,7 +505,7 @@ function startRestTimer(exIdx, restString, container) {
   renderWorkout(container);
 }
 
-function stopRestTimer() {
+export function stopRestTimer() {
   if (activeTimer?.interval) {
     clearInterval(activeTimer.interval);
   }
