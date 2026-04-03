@@ -1,8 +1,17 @@
-import { state, formatWeekRange } from './state.js';
+import { state, formatWeekRange, getCurrentMonday } from './state.js';
 import { showToast } from './toast.js';
 import { SUPABASE_URL } from './config.js';
 
 const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
+
+function getNextMonday() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() + (day === 0 ? 1 : 8 - day);
+  const mon = new Date(d);
+  mon.setDate(diff);
+  return mon.toISOString().split('T')[0];
+}
 
 export async function renderHome(container) {
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -45,23 +54,68 @@ export async function renderHome(container) {
   try { bfData = JSON.parse(localStorage.getItem('hh-bodyfat') || '[]'); } catch { bfData = []; }
   const lastBf = bfData.length > 0 ? bfData[bfData.length - 1] : null;
 
-  // Week list
+  // Categorize weeks: next, current, past
   const weeks = state.weeks || [];
+  const currentMonday = getCurrentMonday();
+  const nextMonday = getNextMonday();
 
-  const weekListHtml = weeks.length > 0 ? weeks.map(w => {
+  let nextWeek = null, thisWeek = null;
+  const pastWeeks = [];
+
+  weeks.forEach(w => {
+    const ws = w.weekStart || w.id;
+    if (ws === nextMonday) nextWeek = w;
+    else if (ws === currentMonday) thisWeek = w;
+    else if (ws < currentMonday) pastWeeks.push(w);
+    else if (ws > nextMonday) pastWeeks.push(w); // future beyond next
+  });
+  // Sort past newest first
+  pastWeeks.sort((a, b) => (b.weekStart || b.id).localeCompare(a.weekStart || a.id));
+
+  function weekRow(w, badge) {
     const id = w.id || w.weekStart;
     const label = w.label || formatWeekRange(w.weekStart || id);
     const isCurrent = id === state.currentPlanId;
     return `<div class="home-week-row${isCurrent ? ' current' : ''}" data-id="${id}">
       <div class="home-week-info">
         <div class="home-week-label">${label}</div>
-        ${isCurrent ? '<div class="home-week-badge">Current</div>' : ''}
+        ${badge ? `<div class="home-week-badge ${badge.cls || ''}">${badge.text}</div>` : ''}
       </div>
       <div class="home-week-actions">
-        <button class="home-week-btn export" data-id="${id}" title="Export">Export</button>
+        <button class="home-week-btn export" data-id="${id}">Export</button>
       </div>
     </div>`;
-  }).join('') : '<div class="empty-state">No weeks imported yet.</div>';
+  }
+
+  let weekSectionsHtml = '';
+
+  if (weeks.length === 0) {
+    weekSectionsHtml = '<div class="empty-state">No weeks imported yet.<br>Tap <b>+ Import Week</b> to get started.</div>';
+  } else {
+    // Next week
+    if (nextWeek) {
+      weekSectionsHtml += `<div class="home-week-group-label">Next Week</div>`;
+      weekSectionsHtml += weekRow(nextWeek, { text: 'Upcoming', cls: 'upcoming' });
+    }
+
+    // This week
+    if (thisWeek) {
+      weekSectionsHtml += `<div class="home-week-group-label">This Week</div>`;
+      weekSectionsHtml += weekRow(thisWeek, { text: 'Active', cls: '' });
+    }
+
+    // Past weeks
+    if (pastWeeks.length > 0) {
+      weekSectionsHtml += `
+        <div class="home-week-group-label home-past-toggle" id="pastToggle">
+          Past Weeks <span class="home-past-count">${pastWeeks.length}</span>
+          <span class="home-past-arrow" id="pastArrow">\u25BC</span>
+        </div>
+        <div class="home-past-list" id="pastList" style="display:none">
+          ${pastWeeks.map(w => weekRow(w, null)).join('')}
+        </div>`;
+    }
+  }
 
   container.innerHTML = `
     <div class="section-header"><div class="section-title">Home</div><div class="section-subtitle">${todayName}</div></div>
@@ -94,7 +148,7 @@ export async function renderHome(container) {
       <span class="home-section-title">Weekly Plans</span>
       <button class="home-import-btn" id="homeImportBtn">+ Import Week</button>
     </div>
-    <div class="home-week-list">${weekListHtml}</div>
+    <div class="home-week-list">${weekSectionsHtml}</div>
     <div style="height:20px"></div>`;
 
   // Snapshot card navigation
@@ -102,6 +156,17 @@ export async function renderHome(container) {
     card.addEventListener('click', () => {
       window.location.hash = card.dataset.goto;
     });
+  });
+
+  // Past weeks toggle
+  document.getElementById('pastToggle')?.addEventListener('click', () => {
+    const list = document.getElementById('pastList');
+    const arrow = document.getElementById('pastArrow');
+    if (list && arrow) {
+      const isHidden = list.style.display === 'none';
+      list.style.display = isHidden ? 'block' : 'none';
+      arrow.textContent = isHidden ? '\u25B2' : '\u25BC';
+    }
   });
 
   // Import button

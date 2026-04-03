@@ -567,6 +567,37 @@
   padding: 0 12px;
 }
 
+.home-week-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 4px 6px;
+}
+
+.home-past-toggle {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-past-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: #e5e5ea;
+  color: var(--text-tertiary);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+}
+
+.home-past-arrow {
+  font-size: 10px;
+  color: var(--text-quaternary);
+  margin-left: auto;
+}
+
 .home-week-row {
   display: flex;
   align-items: center;
@@ -610,6 +641,11 @@
   background: var(--accent-light);
   color: var(--accent);
   flex-shrink: 0;
+}
+
+.home-week-badge.upcoming {
+  background: var(--green-bg);
+  color: var(--green-text);
 }
 
 .home-week-actions {
