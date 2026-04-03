@@ -1,4 +1,4 @@
-import { state, formatWeekRange, getWeekPickerHtml, handleWeekSwitch } from './state.js';
+import { state, formatWeekRange, getWeekPickerHtml, initWeekNav } from './state.js';
 import { showToast } from './toast.js';
 import { SUPABASE_URL } from './config.js';
 
@@ -136,10 +136,8 @@ export async function renderWorkout(container) {
     }
   }
 
-  // Week picker change
-  document.getElementById('inlineWeekSelect')?.addEventListener('change', (e) => {
-    handleWeekSwitch(e.target.value, renderWorkout, container);
-  });
+  // Week navigation
+  initWeekNav(renderWorkout, container);
 
   // Event handlers
   container.querySelectorAll('.day-pill').forEach(btn => {

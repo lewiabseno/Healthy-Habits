@@ -86,22 +86,77 @@
   padding-right: 28px;
 }
 
-/* Inline week selector in tab headers */
-.inline-week-select {
-  font-size: 13px;
-  color: var(--accent);
-  font-weight: 600;
-  background: none;
+/* Week navigation (arrows + label) */
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.week-nav-arrow {
+  width: 28px;
+  height: 28px;
   border: none;
-  padding: 2px 0;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   font-family: inherit;
-  -webkit-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23007aff' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right center;
-  padding-right: 16px;
+  line-height: 1;
+  padding: 0;
+}
+
+.week-nav-arrow.disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.week-nav-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* Week month picker modal */
+.wm-list {
+  overflow-y: auto;
+  max-height: 55vh;
+  padding-bottom: 10px;
+}
+
+.wm-month {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 14px 0 4px;
+}
+
+.wm-week {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  margin-bottom: 2px;
+}
+
+.wm-week:active {
+  background: var(--bg);
+}
+
+.wm-week.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* Content area */
