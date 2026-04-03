@@ -213,13 +213,22 @@ Implemented controls:
 - Plan ownership checks are performed before plan-scoped reads and writes
 - User-controlled identifiers are validated before use
 
-This significantly reduces SQL injection risk in the current API surface.
+Additionally:
+
+- All SELECT queries include LIMIT clauses (200-500 depending on endpoint) to prevent unbounded result sets
+- Bodyweight unit field is whitelisted to `lbs` or `kg`
+- RPE values are whitelisted to the valid scale (6-10 in 0.5 increments, or empty)
+- Day index parameters in GET requests are validated as integers 0-6
+- Export data is set via `textarea.value` (not innerHTML) to prevent injection in the export fallback modal
+
+These measures significantly reduce SQL injection risk and prevent resource exhaustion in the current API surface.
 
 Relevant files:
 
 - `functions/api/_validate.js`
 - `functions/api/*.js`
 - `functions/api/week/[id].js`
+- `js/home.js` (export fallback)
 
 ## Deployment Notes
 
