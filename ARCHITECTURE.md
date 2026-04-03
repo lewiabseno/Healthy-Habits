@@ -32,13 +32,16 @@ The `IS_PRODUCTION` flag from `js/config.js` controls all branching. Every featu
 ## File Structure
 
 ```
-index.html              Redirects to app.html
+index.html              Redirects to app.html (meta refresh, no JS)
 app.html                Main app shell. Content area, bottom tab bar, modals.
 manifest.json           PWA manifest for Add to Home Screen
 schema.sql              D1 database schema (SQLite)
-wrangler.toml           Cloudflare config (D1 binding)
-JSON_FORMAT.md          Complete specification of the weekly plan JSON format.
-CLAUDE.md               This file.
+wrangler.toml           Cloudflare config (D1 binding, env var docs)
+_headers                Cloudflare Pages HTTP security headers (CSP, X-Frame-Options, etc.)
+JSON_FORMAT.md          Complete specification of the weekly plan JSON format
+ARCHITECTURE.md         This file
+SECURITY.md             Security measures, threat model, and deployment requirements
+DATABASES.md            Full database schema documentation
 
 icons/
   icon.svg              App icon (blue with bar chart)
@@ -60,6 +63,8 @@ js/
   router.js             Hash-based tab routing (#home, #workout, #meals, #dashboard)
   app.js                Entry point — detect mode, load weeks, init modules
   migrate.js            Versioned data migration system for localStorage schema changes
+  sanitize.js           HTML escaping (esc, escAttr) to prevent XSS in innerHTML templates
+  plan-validation.js    JSON structure validation for meal collections and macro fields
 
   home.js               Home tab — today's snapshot (workout/meals/weight), week management
                         (Next Week / This Week / Past Weeks), import button, per-week export
@@ -86,7 +91,10 @@ js/
 
 functions/
   api/
-    _middleware.js       Auth middleware — extracts user ID from Cloudflare Access JWT
+    _middleware.js       Auth middleware — JWT signature verification, CSRF origin checks,
+                        security headers on all responses
+    _validate.js         Shared validation helpers — type checkers, plan ownership verification,
+                        meal/macro validators, week plan structure validation
     me.js               GET /api/me — returns current user info
     weeks.js             GET/POST /api/weeks — list/create weeks
     week/[id].js         GET/PUT /api/week/:id — get/update single week
