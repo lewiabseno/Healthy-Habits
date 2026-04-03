@@ -401,6 +401,73 @@
   margin-top: 1px;
 }
 
+/* Inline bodyweight widget */
+.bw-inline-widget {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 12px 8px;
+  padding: 10px 14px;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+}
+
+.bw-inline-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.bw-inline-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bw-inline-last {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.bw-inline-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bw-inline-input {
+  width: 70px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  -webkit-appearance: none;
+  font-family: inherit;
+}
+
+.bw-inline-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.bw-inline-btn {
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 /* Meal cards */
 .meal-card {
   background: var(--card);

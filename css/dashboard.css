@@ -207,6 +207,33 @@
 }
 
 /* Completion bar charts */
+/* Time range pills */
+.range-pills {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.range-pill {
+  flex: 1;
+  padding: 5px 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: #e5e5ea;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+}
+
+.range-pill.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
 .bar-chart-wrap {
   height: 180px;
   position: relative;

@@ -69,33 +69,84 @@ function renderDemoDashboard(container) {
     }
   }
 
+  // Bodyweight trend chart with time range pills
+  let bwData;
+  try { bwData = JSON.parse(localStorage.getItem('hh-bodyweight') || '[]'); } catch { bwData = []; }
+  if (bwData.length >= 1) {
+    bwData.sort((a, b) => a.date.localeCompare(b.date));
+    const bwSection = document.createElement('div');
+    bwSection.className = 'dash-section';
+    const ranges = [
+      { key: '1W', label: '1W', days: 7 },
+      { key: '2W', label: '2W', days: 14 },
+      { key: '1M', label: '1M', days: 30 },
+      { key: '3M', label: '3M', days: 90 },
+      { key: '6M', label: '6M', days: 180 },
+      { key: '1Y', label: '1Y', days: 365 },
+      { key: 'ALL', label: 'All', days: 99999 },
+    ];
+    const rangePills = ranges.map(r =>
+      `<button class="range-pill${r.key === 'ALL' ? ' active' : ''}" data-range="${r.key}" data-days="${r.days}">${r.label}</button>`
+    ).join('');
+    bwSection.innerHTML = `
+      <div class="dash-section-title">Bodyweight Trend</div>
+      <div class="range-pills">${rangePills}</div>
+      <div class="chart-card"><div class="chart-wrap"><canvas id="bwDemoChart"></canvas></div></div>`;
+    container.appendChild(bwSection);
+
+    let bwChart = null;
+
+    function renderBwChart(days) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      const cutoffStr = cutoff.toISOString().split('T')[0];
+      const filtered = days >= 99999 ? bwData : bwData.filter(d => d.date >= cutoffStr);
+      const chartData = filtered.length > 0 ? filtered : bwData;
+
+      if (bwChart) { bwChart.destroy(); charts = charts.filter(c => c !== bwChart); }
+      bwChart = new Chart(document.getElementById('bwDemoChart'), {
+        type: 'line',
+        data: {
+          labels: chartData.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+          datasets: [{
+            data: chartData.map(d => d.weight),
+            borderColor: '#007aff', backgroundColor: 'rgba(0,122,255,0.1)',
+            borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#007aff', fill: true, tension: 0.3,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} lbs` } } },
+          scales: {
+            x: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+            y: { ticks: { color: '#8e8e93', font: { size: 11 }, callback: v => v + ' lbs' }, grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: false },
+          },
+        },
+      });
+      charts.push(bwChart);
+    }
+
+    renderBwChart(99999); // Default: all
+
+    bwSection.querySelectorAll('.range-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        bwSection.querySelectorAll('.range-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        renderBwChart(parseInt(pill.dataset.days));
+      });
+    });
+  }
+
   const exerciseNames = Object.keys(exerciseData).sort();
 
-  if (exerciseNames.length === 0) {
+  if (exerciseNames.length === 0 && bwData.length === 0) {
     container.innerHTML += `<div class="empty-state">No data yet.<br>Log sets in the Workout tab<br>to see your progress here.</div>`;
     return;
   }
 
-  // Personal bests
-  const bests = exerciseNames.map(name => {
-    const maxEntry = exerciseData[name].reduce((best, e) => e.weight > best.weight ? e : best, exerciseData[name][0]);
-    return { exercise_name: name, best_weight: maxEntry.weight, best_reps: maxEntry.reps };
-  });
+  if (exerciseNames.length === 0) return;
 
-  const section = document.createElement('div');
-  section.className = 'dash-section';
-  section.innerHTML = `
-    <div class="dash-section-title">Personal Bests</div>
-    <div class="pb-grid">${bests.map(b => `
-      <div class="pb-card">
-        <div class="pb-exercise">${b.exercise_name}</div>
-        <div class="pb-weight">${b.best_weight} lbs</div>
-        ${b.best_reps ? `<div class="pb-reps">${b.best_reps} reps</div>` : ''}
-      </div>`).join('')}
-    </div>`;
-  container.appendChild(section);
-
-  // Exercise progression chart
+  // Exercise progression chart + personal best for selected exercise
   if (exerciseNames.length > 0) {
     const chartSection = document.createElement('div');
     chartSection.className = 'dash-section';
@@ -103,6 +154,7 @@ function renderDemoDashboard(container) {
     chartSection.innerHTML = `
       <div class="dash-section-title">Exercise Progression</div>
       <div class="exercise-picker"><select id="exProgSelect">${opts}</select></div>
+      <div id="exPbContainer"></div>
       <div class="chart-card"><div class="chart-wrap"><canvas id="exProgChart"></canvas></div></div>`;
     container.appendChild(chartSection);
 
@@ -111,6 +163,18 @@ function renderDemoDashboard(container) {
     function renderChart(idx) {
       const name = exerciseNames[idx];
       const entries = exerciseData[name];
+
+      // Personal best for this exercise
+      const maxEntry = entries.reduce((best, e) => e.weight > best.weight ? e : best, entries[0]);
+      document.getElementById('exPbContainer').innerHTML = `
+        <div class="pb-grid" style="margin-bottom:10px">
+          <div class="pb-card">
+            <div class="pb-exercise">Personal Best</div>
+            <div class="pb-weight">${maxEntry.weight} lbs</div>
+            ${maxEntry.reps ? `<div class="pb-reps">${maxEntry.reps} reps</div>` : ''}
+          </div>
+        </div>`;
+
       // Group by week, find max
       const byWeek = {};
       entries.forEach(e => {

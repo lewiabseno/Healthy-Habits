@@ -16,6 +16,10 @@ function getLocalMealChecks() {
   try { return JSON.parse(localStorage.getItem('hh-meal-checks') || '{}'); } catch { return {}; }
 }
 function saveLocalMealChecks(all) { localStorage.setItem('hh-meal-checks', JSON.stringify(all)); }
+function getLocalBW() {
+  try { return JSON.parse(localStorage.getItem('hh-bodyweight') || '[]'); } catch { return []; }
+}
+function saveLocalBW(arr) { localStorage.setItem('hh-bodyweight', JSON.stringify(arr)); }
 function getLocalGroceryChecks() {
   try { return JSON.parse(localStorage.getItem('hh-grocery-checks') || '{}'); } catch { return {}; }
 }
@@ -90,6 +94,37 @@ export async function renderMeals(container) {
     replaceMealsBtn.addEventListener('click', async () => {
       const { openOverrideModal } = await import('./override.js');
       openOverrideModal('meals', state.currentDay);
+    });
+  }
+
+  // Bodyweight log button
+  const bwBtn = document.getElementById('bwInlineBtn');
+  if (bwBtn) {
+    bwBtn.addEventListener('click', async () => {
+      const input = document.getElementById('bwInlineInput');
+      const val = input?.value?.trim();
+      if (!val || isNaN(parseFloat(val))) {
+        showToast('Enter a valid weight', 'error');
+        return;
+      }
+      const today = new Date().toISOString().split('T')[0];
+      if (isConfigured) {
+        try {
+          const { upsertBodyweight } = await import('./api.js');
+          await upsertBodyweight(state.userId, today, val, 'lbs');
+        } catch (e) { showToast('Failed to log weight', 'error'); return; }
+      } else {
+        const bwData = getLocalBW();
+        const idx = bwData.findIndex(e => e.date === today);
+        if (idx >= 0) bwData[idx].weight = parseFloat(val);
+        else bwData.push({ date: today, weight: parseFloat(val) });
+        saveLocalBW(bwData);
+      }
+      showToast('Weight logged!', 'success');
+      // Update widget in-place instead of full re-render
+      const lastLabel = document.querySelector('.bw-inline-last');
+      if (lastLabel) lastLabel.textContent = `${val} lbs (today)`;
+      if (input) input.value = '';
     });
   }
 
@@ -283,10 +318,28 @@ async function renderMealDay() {
         <button class="replace-day-btn" id="replaceMealsBtn" type="button">Replace</button>
       </div>
     </div>
+    ${getBodyweightWidget()}
     <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
     <div class="progress-label">${done} of ${mealKeys.length} meals eaten</div>
     ${totalsHtml}
     <div class="meal-card">${mealsHtml}</div>`;
+}
+
+function getBodyweightWidget() {
+  const bwData = getLocalBW();
+  const last = bwData.length > 0 ? bwData[bwData.length - 1] : null;
+  const today = new Date().toISOString().split('T')[0];
+  const loggedToday = last && last.date === today;
+  return `<div class="bw-inline-widget">
+    <div class="bw-inline-left">
+      <span class="bw-inline-label">Weight</span>
+      ${last ? `<span class="bw-inline-last">${last.weight} lbs${loggedToday ? ' (today)' : ''}</span>` : '<span class="bw-inline-last">Not logged</span>'}
+    </div>
+    <div class="bw-inline-right">
+      <input class="bw-inline-input" type="number" inputmode="decimal" placeholder="${last ? last.weight : 'lbs'}" id="bwInlineInput"/>
+      <button class="bw-inline-btn" id="bwInlineBtn">Log</button>
+    </div>
+  </div>`;
 }
 
 function formatDayDate(dayIndex) {
