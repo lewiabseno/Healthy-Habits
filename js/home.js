@@ -241,9 +241,11 @@ async function exportWeek(weekId) {
 
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  // Stretch checks
-  let stretchChecks;
+  // Stretch checks, RPE, day notes
+  let stretchChecks, rpeData, dayNotes;
   try { stretchChecks = JSON.parse(localStorage.getItem('hh-stretch-checks') || '{}'); } catch { stretchChecks = {}; }
+  try { rpeData = JSON.parse(localStorage.getItem('hh-rpe') || '{}'); } catch { rpeData = {}; }
+  try { dayNotes = JSON.parse(localStorage.getItem('hh-day-notes') || '{}'); } catch { dayNotes = {}; }
 
   // Meal checks
   let mealChecks;
@@ -300,17 +302,24 @@ async function exportWeek(weekId) {
         return { name: typeof s === 'string' ? s : s.name, completed: !!stretchChecks[key] };
       });
 
+      // Day notes
+      const notesKey = `${weekId}_${w.day}_notes`;
+      const userNotes = dayNotes[notesKey] || '';
+
       return {
         day: w.day,
         dayName: w.dayName || dayNames[w.day],
         title: w.type || w.title,
+        notes: userNotes || undefined,
         exercises: (w.exercises || []).map((ex, exIdx) => {
           const sets = allLogs[w.day]?.[exIdx] || {};
           const logged = Object.entries(sets)
             .sort(([a], [b]) => parseInt(a) - parseInt(b))
             .map(([, s]) => ({ weight: s.weight ? parseFloat(s.weight) : null, reps: s.reps ? parseInt(s.reps) : null }))
             .filter(s => s.weight !== null || s.reps !== null);
-          return { name: ex.name, equipment: ex.equipment || '', targetSets: ex.sets, targetReps: ex.reps, logged };
+          const rpeKey = `${weekId}_${w.day}_rpe_${exIdx}`;
+          const rpe = rpeData[rpeKey] || undefined;
+          return { name: ex.name, equipment: ex.equipment || '', targetSets: ex.sets, targetReps: ex.reps, logged, rpe };
         }),
         warmup: warmupDone.length > 0 ? warmupDone : undefined,
         cooldown: cooldownDone.length > 0 ? cooldownDone : undefined,
