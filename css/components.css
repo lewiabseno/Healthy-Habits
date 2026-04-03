@@ -454,15 +454,16 @@
 }
 
 .bw-inline-input {
-  width: 70px;
-  padding: 7px 8px;
+  width: 72px;
+  padding: 10px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   text-align: center;
   -webkit-appearance: none;
   font-family: inherit;
+  min-height: 44px;
 }
 
 .bw-inline-input:focus {
@@ -471,15 +472,16 @@
 }
 
 .bw-inline-btn {
-  padding: 7px 14px;
+  padding: 10px 16px;
   border: none;
   border-radius: var(--radius-sm);
   background: var(--accent);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  min-height: 44px;
 }
 
 /* Meal cards */
@@ -505,8 +507,8 @@
 }
 
 .meal-check {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 2px solid var(--text-quaternary);
   display: flex;
@@ -515,6 +517,14 @@
   flex-shrink: 0;
   margin-top: 1px;
   transition: all 0.2s;
+  /* Expand tap target beyond visual size */
+  position: relative;
+}
+
+.meal-check::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
 }
 
 .meal-check.checked {
@@ -743,8 +753,8 @@
 }
 
 .grocery-check {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   border: 2px solid var(--text-quaternary);
   display: flex;
@@ -752,6 +762,13 @@
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s;
+  position: relative;
+}
+
+.grocery-check::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
 }
 
 .grocery-check.checked {
