@@ -2,22 +2,26 @@ import { state } from './state.js';
 import { initRouter } from './router.js';
 import { initImport, loadDemoWeeks } from './import.js';
 import { runMigrations } from './migrate.js';
-import { detectMode, IS_PRODUCTION } from './config.js';
+import { detectMode, IS_PRODUCTION, PRODUCTION_API_MESSAGE, PRODUCTION_API_STATUS } from './config.js';
 
 async function init() {
   // Run data migrations before anything else
   runMigrations();
 
   // Detect if we're on Cloudflare (production) or local (demo)
-  await detectMode();
+  const mode = await detectMode();
+
+  if (mode.isProduction && PRODUCTION_API_STATUS === 'error') {
+    document.getElementById('content').innerHTML = `
+      <div class="empty-state">${PRODUCTION_API_MESSAGE}</div>`;
+    return;
+  }
 
   if (IS_PRODUCTION) {
-    // Production: get user from Cloudflare Access
-    const { getUser } = await import('./auth.js');
-    const user = await getUser();
+    const user = mode.user?.userId ? { id: mode.user.userId, email: mode.user.email } : null;
     if (!user) {
       document.getElementById('content').innerHTML = `
-        <div class="empty-state">Not authenticated.<br>Please log in via Cloudflare Access.</div>`;
+        <div class="empty-state">${PRODUCTION_API_MESSAGE || 'Not authenticated.<br>Please log in via Cloudflare Access.'}</div>`;
       return;
     }
     state.userId = user.id;

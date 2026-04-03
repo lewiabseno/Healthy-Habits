@@ -5,7 +5,10 @@
 
 export async function getUser() {
   try {
-    const res = await fetch('/api/me');
+    const res = await fetch('/api/me', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
     if (res.ok) {
       const data = await res.json();
       return { id: data.userId, email: data.email };

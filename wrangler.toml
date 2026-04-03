@@ -8,3 +8,9 @@ compatibility_date = "2024-01-01"
 binding = "DB"
 database_name = "healthy-habits"
 database_id = "YOUR_D1_DATABASE_ID"
+
+# Required production vars for Cloudflare Access JWT validation.
+# Configure these in Cloudflare Pages / Wrangler, not in source control.
+# [vars]
+# TEAM_DOMAIN = "https://your-team.cloudflareaccess.com"
+# POLICY_AUD = "your-access-application-aud-tag"

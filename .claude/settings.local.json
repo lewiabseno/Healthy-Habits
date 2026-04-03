@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Bash(node -c \"$f\")",
+      "Bash(done)",
+      "Bash(node -c js/dashboard.js)",
+      "Bash(node -c js/workout.js)",
+      "Bash(node -c js/meals.js)",
+      "Bash(node -c js/home.js)",
+      "Bash(node -c js/state.js)",
+      "Bash(node -c js/migrate.js)",
+      "Bash(node -c js/app.js)",
+      "Bash(rm netlify.toml)",
+      "Bash(mkdir -p functions/api/week)",
+      "Bash(grep -n \"SELECT\" \"/c/Users/lewin/OneDrive/Documents/Projects/Healthy Habits/functions/api\"/*.js)"
+    ]
+  }
+}
