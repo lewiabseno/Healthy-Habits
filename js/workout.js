@@ -1,0 +1,467 @@
+import { state } from './state.js';
+import { showToast } from './toast.js';
+import { SUPABASE_URL } from './config.js';
+
+const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
+
+let logs = {}; // { exerciseIndex: { setIndex: { weight, reps } } }
+let debounceTimers = {};
+let pillScrollPos = null;
+let isInitialRender = true;
+let activeSubtab = 'workout'; // 'warmup' | 'workout' | 'cooldown'
+let stretchChecks = {};
+let activeTimer = null; // { exIdx, seconds, interval }
+
+function getLocalStretchChecks() {
+  try { return JSON.parse(localStorage.getItem('hh-stretch-checks') || '{}'); } catch { return {}; }
+}
+function saveLocalStretchChecks(all) {
+  localStorage.setItem('hh-stretch-checks', JSON.stringify(all));
+}
+
+function getLocalLogs() {
+  try {
+    return JSON.parse(localStorage.getItem('hh-workout-logs') || '{}');
+  } catch { return {}; }
+}
+
+function saveLocalLogs(all) {
+  localStorage.setItem('hh-workout-logs', JSON.stringify(all));
+}
+
+export async function renderWorkout(container) {
+  const plan = state.currentPlan;
+  if (!plan) {
+    container.innerHTML = `<div class="section-header"><div class="section-title">Workout</div></div>
+      <div class="empty-state">No week imported yet.<br>Tap <b>+ Import</b> to add a weekly plan.</div>`;
+    return;
+  }
+
+  const workouts = plan.workouts || [];
+  const dayMap = {};
+  workouts.forEach(w => { dayMap[w.day] = w; });
+
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  const workout = dayMap[state.currentDay];
+
+  // Load logs
+  if (workout) {
+    if (isConfigured && state.currentPlanId) {
+      const { loadWorkoutLogs } = await import('./api.js');
+      await loadRemoteLogs(loadWorkoutLogs, state.currentDay);
+    } else {
+      loadLocalDayLogs(state.currentDay);
+    }
+  }
+
+  const pillsHtml = dayNames.map((name, i) => {
+    const active = i === state.currentDay;
+    return `<button class="day-pill${active ? ' active' : ''}" data-day="${i}">${name}</button>`;
+  }).join('');
+
+  const dateLabel = `${dayNames[state.currentDay]}, ${formatDayDate(state.currentDay)}`;
+
+  let bodyHtml = '';
+  if (!workout) {
+    bodyHtml = `<div class="day-header"><div class="day-title">${dateLabel}</div></div>
+      <div class="empty-state">Rest day. Enjoy your recovery!<br><br><button class="replace-day-btn" id="replaceWorkoutBtn" type="button">Add Workout</button></div>`;
+  } else {
+    const badgeClass = workout.type?.toLowerCase().includes('cardio') ? 'badge-yellow'
+      : workout.type?.toLowerCase().includes('rest') ? 'badge-gray'
+      : workout.type?.toLowerCase().includes('lower') ? 'badge-green'
+      : 'badge-blue';
+
+    const hasWarmup = workout.warmup?.length > 0;
+    const hasCooldown = workout.cooldown?.length > 0;
+    const hasStretches = hasWarmup || hasCooldown;
+
+    // Sub-tabs (only if stretches exist)
+    let subtabsHtml = '';
+    if (hasStretches) {
+      subtabsHtml = `<div class="workout-subtabs">
+        ${hasWarmup ? `<button class="workout-subtab${activeSubtab === 'warmup' ? ' active' : ''}" data-subtab="warmup">Warm-Up</button>` : ''}
+        <button class="workout-subtab${activeSubtab === 'workout' ? ' active' : ''}" data-subtab="workout">Workout</button>
+        ${hasCooldown ? `<button class="workout-subtab${activeSubtab === 'cooldown' ? ' active' : ''}" data-subtab="cooldown">Cool-Down</button>` : ''}
+      </div>`;
+    }
+
+    // Load stretch checks
+    loadStretchChecks();
+
+    let contentHtml = '';
+    if (activeSubtab === 'warmup' && hasWarmup) {
+      contentHtml = renderStretches(workout.warmup, 'warmup');
+    } else if (activeSubtab === 'cooldown' && hasCooldown) {
+      contentHtml = renderStretches(workout.cooldown, 'cooldown');
+    } else {
+      // Default to workout content
+      const tipText = workout.tip || workout.note || '';
+      contentHtml = `
+        ${tipText ? `<div class="note-card">${tipText}</div>` : ''}
+        <div class="card-group">${renderExercises(workout, state.currentDay)}</div>`;
+    }
+
+    bodyHtml = `
+      <div class="day-header">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="day-title">${dateLabel}</div>
+            <div class="day-badges">
+              <span class="badge ${badgeClass}">${workout.type || workout.title}</span>
+              ${workout.duration ? `<span class="day-duration">${workout.duration}</span>` : ''}
+            </div>
+          </div>
+          <button class="replace-day-btn" id="replaceWorkoutBtn" type="button">Replace</button>
+        </div>
+      </div>
+      ${subtabsHtml}
+      ${contentHtml}`;
+  }
+
+  container.innerHTML = `
+    <div class="section-header"><div class="section-title">Workout</div></div>
+    <div class="day-pills">${pillsHtml}</div>
+    ${bodyHtml}`;
+
+  // Restore or init pill scroll position
+  const pillsEl = container.querySelector('.day-pills');
+  if (pillsEl) {
+    if (pillScrollPos != null) {
+      pillsEl.scrollLeft = pillScrollPos;
+    } else if (isInitialRender) {
+      const activePill = container.querySelector('.day-pill.active');
+      if (activePill) {
+        const offset = activePill.offsetLeft - pillsEl.offsetLeft - (pillsEl.clientWidth / 2) + (activePill.clientWidth / 2);
+        pillsEl.scrollLeft = Math.max(0, offset);
+      }
+    }
+    isInitialRender = false;
+  }
+
+  // Event handlers
+  container.querySelectorAll('.day-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pills = container.querySelector('.day-pills');
+      if (pills) pillScrollPos = pills.scrollLeft;
+      state.currentDay = parseInt(btn.dataset.day);
+      state.expandedExercise = null;
+      activeSubtab = 'workout';
+      renderWorkout(container);
+    });
+  });
+
+  container.querySelectorAll('.ex-header').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.key;
+      state.expandedExercise = state.expandedExercise === key ? null : key;
+      renderWorkout(container);
+    });
+  });
+
+  container.querySelectorAll('.set-input').forEach(input => {
+    input.addEventListener('input', () => handleSetInput(input, container));
+  });
+
+  // Replace day button
+  const replaceBtn = document.getElementById('replaceWorkoutBtn');
+  if (replaceBtn) {
+    replaceBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const { openOverrideModal } = await import('./override.js');
+      openOverrideModal('workout', state.currentDay);
+    });
+  }
+
+  // Timer skip button
+  const skipBtn = document.getElementById('timerSkipBtn');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      stopRestTimer();
+      renderWorkout(container);
+    });
+  }
+
+  // Sub-tab handlers
+  container.querySelectorAll('.workout-subtab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeSubtab = btn.dataset.subtab;
+      renderWorkout(container);
+    });
+  });
+
+  // Stretch check handlers
+  container.querySelectorAll('.stretch-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const type = el.dataset.type;
+      const idx = parseInt(el.dataset.idx);
+      const key = `${state.currentPlanId}_${state.currentDay}_${type}_${idx}`;
+      stretchChecks[key] = !stretchChecks[key];
+      const all = getLocalStretchChecks();
+      Object.assign(all, stretchChecks);
+      saveLocalStretchChecks(all);
+      renderWorkout(container);
+    });
+  });
+}
+
+function loadStretchChecks() {
+  const all = getLocalStretchChecks();
+  stretchChecks = all;
+}
+
+function renderStretches(stretches, type) {
+  if (!stretches || stretches.length === 0) return '<div class="empty-state">No stretches listed.</div>';
+
+  const done = stretches.filter((_, i) => {
+    const key = `${state.currentPlanId}_${state.currentDay}_${type}_${i}`;
+    return stretchChecks[key];
+  }).length;
+
+  const itemsHtml = stretches.map((s, i) => {
+    const key = `${state.currentPlanId}_${state.currentDay}_${type}_${i}`;
+    const ch = !!stretchChecks[key];
+    const name = typeof s === 'string' ? s : s.name;
+    const duration = typeof s === 'object' ? s.duration : '';
+    const note = typeof s === 'object' ? s.notes : '';
+    return `<div class="stretch-item" data-type="${type}" data-idx="${i}">
+      <div class="stretch-check${ch ? ' checked' : ''}"><span class="stretch-checkmark">\u2713</span></div>
+      <div style="flex:1">
+        <div class="stretch-name${ch ? ' done' : ''}">${name}</div>
+        ${note ? `<div class="stretch-note">${note}</div>` : ''}
+      </div>
+      ${duration ? `<span class="stretch-detail">${duration}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="progress-wrap"><div class="progress-bar" style="width:${stretches.length > 0 ? Math.round((done / stretches.length) * 100) : 0}%"></div></div>
+    <div class="progress-label">${done} of ${stretches.length} stretches done</div>
+    <div class="card-group"><div class="stretch-card">${itemsHtml}</div></div>`;
+}
+
+function formatDayDate(dayIndex) {
+  // Compute actual date from current week's Monday
+  if (state.currentPlan?.weekStart) {
+    const mon = new Date(state.currentPlan.weekStart + 'T12:00:00');
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + dayIndex);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return '';
+}
+
+async function loadRemoteLogs(loadWorkoutLogs, dayIndex) {
+  logs = {};
+  try {
+    const data = await loadWorkoutLogs(state.currentPlanId, dayIndex);
+    data.forEach(row => {
+      if (!logs[row.exercise_index]) logs[row.exercise_index] = {};
+      logs[row.exercise_index][row.set_index] = {
+        weight: row.weight != null ? String(row.weight) : '',
+        reps: row.reps != null ? String(row.reps) : '',
+      };
+    });
+  } catch (e) {
+    showToast('Failed to load workout data', 'error');
+  }
+}
+
+function loadLocalDayLogs(dayIndex) {
+  logs = {};
+  const all = getLocalLogs();
+  const key = `${state.currentPlanId}_${dayIndex}`;
+  const dayLogs = all[key] || {};
+  Object.entries(dayLogs).forEach(([exIdx, sets]) => {
+    logs[parseInt(exIdx)] = {};
+    Object.entries(sets).forEach(([setIdx, data]) => {
+      logs[parseInt(exIdx)][parseInt(setIdx)] = data;
+    });
+  });
+}
+
+function renderExercises(workout, dayIndex) {
+  const clockIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+
+  return (workout.exercises || []).map((ex, exIdx) => {
+    const key = `${dayIndex}_${exIdx}`;
+    const isExpanded = state.expandedExercise === key;
+    const exLogs = logs[exIdx] || {};
+
+    // Equipment-aware labels
+    const equip = (ex.equipment || '').toLowerCase();
+    const isBodyweight = equip === 'bodyweight';
+
+    // Check if all target sets are complete
+    const targetSets = ex.sets || 3;
+    let completedSets = 0;
+    for (let si = 0; si < targetSets; si++) {
+      const sl = exLogs[si];
+      if (sl && ((isBodyweight || sl.weight) && sl.reps)) completedSets++;
+    }
+    const isComplete = completedSets >= targetSets;
+    const equipMap = {
+      'barbell':        { label: 'Weight (bar total)',  placeholder: 'bar lbs', badge: 'barbell' },
+      'dumbbell':       { label: 'Weight (per DB)',     placeholder: 'lbs/ea',  badge: 'dumbbell' },
+      'cable':          { label: 'Weight (stack)',      placeholder: 'stack',   badge: 'cable' },
+      'cable-single':   { label: 'Weight (per arm)',    placeholder: 'lbs/arm', badge: 'cable' },
+      'machine':        { label: 'Weight (lbs)',        placeholder: 'lbs',     badge: 'machine' },
+      'machine-single': { label: 'Weight (per arm)',    placeholder: 'lbs/arm', badge: 'iso machine' },
+      'bodyweight':     { label: '',                    placeholder: '',        badge: 'BW' },
+    };
+    const em = equipMap[equip] || { label: 'Weight (lbs)', placeholder: 'lbs', badge: '' };
+    const weightLabel = em.label;
+    const weightPlaceholder = em.placeholder;
+    const equipBadge = em.badge
+      ? `<span class="equip-badge">${em.badge}</span>`
+      : '';
+
+    // Rest info
+    const restSets = ex.restBetweenSets || '';
+    const restExercise = ex.restBetweenExercises || '';
+
+    let setArea = '';
+    if (isExpanded) {
+      const numSets = Math.max(Object.keys(exLogs).length, ex.sets || 3);
+      const setRows = Array.from({ length: numSets }, (_, si) => {
+        const sl = exLogs[si] || { weight: '', reps: '' };
+        return `<div class="set-row${isBodyweight ? ' bw-row' : ''}">
+          <span class="set-num">S${si + 1}</span>
+          ${isBodyweight ? '<span class="set-bw-label">BW</span>' : `<input class="set-input" type="number" inputmode="decimal" placeholder="${weightPlaceholder}"
+            value="${sl.weight}" data-ex="${exIdx}" data-set="${si}" data-field="weight"/>`}
+          <input class="set-input" type="number" inputmode="decimal" placeholder="reps"
+            value="${sl.reps}" data-ex="${exIdx}" data-set="${si}" data-field="reps"/>
+        </div>`;
+      }).join('');
+
+      // Rest info lines
+      const restSetHtml = restSets ? `<div class="rest-info">${clockIcon} Rest <b>${restSets}</b> between sets</div>` : '';
+      const restExHtml = restExercise ? `<div class="rest-between-exercises">${clockIcon} Rest <b>${restExercise}</b> before next exercise</div>` : '';
+
+      // Timer display
+      const timerHtml = activeTimer && activeTimer.exIdx === exIdx
+        ? `<div class="rest-timer">
+            <span class="rest-timer-label">Rest</span>
+            <span class="rest-timer-time" id="timerDisplay">${formatTimer(activeTimer.seconds)}</span>
+            <button class="rest-timer-btn" id="timerSkipBtn">Skip</button>
+          </div>`
+        : '';
+
+      setArea = `<div class="set-area">
+        ${restSetHtml}
+        <div class="set-header"><span></span><span>${isBodyweight ? '' : weightLabel}</span><span>Reps</span></div>
+        ${setRows}
+        ${timerHtml}
+        ${restExHtml}
+      </div>`;
+    }
+
+    return `<div class="ex-card${isComplete ? ' complete' : ''}">
+      <div class="ex-header" data-key="${key}">
+        <div>
+          <div class="ex-name">${ex.name} ${equipBadge}</div>
+          ${ex.notes ? `<div class="ex-note">${ex.notes}</div>` : ''}
+        </div>
+        <div class="ex-right">
+          <span class="ex-reps-label">${ex.sets} \u00D7 ${ex.reps}</span>
+          <span class="ex-arrow">${isExpanded ? '\u25B2' : '\u25BC'}</span>
+        </div>
+      </div>
+      ${setArea}
+    </div>`;
+  }).join('');
+}
+
+function formatTimer(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function parseRestToSeconds(rest) {
+  if (!rest) return 0;
+  const str = rest.toLowerCase().trim();
+  const match = str.match(/^(\d+)\s*(sec|s|min|m|minutes|seconds)?/);
+  if (!match) return 0;
+  const val = parseInt(match[1]);
+  const unit = match[2] || 'sec';
+  if (unit.startsWith('m')) return val * 60;
+  return val;
+}
+
+function startRestTimer(exIdx, restString, container) {
+  stopRestTimer();
+  const seconds = parseRestToSeconds(restString);
+  if (seconds <= 0) return;
+  activeTimer = { exIdx, seconds, interval: null };
+  activeTimer.interval = setInterval(() => {
+    activeTimer.seconds--;
+    const display = document.getElementById('timerDisplay');
+    if (display) {
+      display.textContent = formatTimer(activeTimer.seconds);
+    }
+    if (activeTimer.seconds <= 0) {
+      stopRestTimer();
+      renderWorkout(container);
+    }
+  }, 1000);
+  renderWorkout(container);
+}
+
+function stopRestTimer() {
+  if (activeTimer?.interval) {
+    clearInterval(activeTimer.interval);
+  }
+  activeTimer = null;
+}
+
+function handleSetInput(input, container) {
+  const exIdx = parseInt(input.dataset.ex);
+  const setIdx = parseInt(input.dataset.set);
+  const field = input.dataset.field;
+  const value = input.value;
+
+  if (!logs[exIdx]) logs[exIdx] = {};
+  if (!logs[exIdx][setIdx]) logs[exIdx][setIdx] = { weight: '', reps: '' };
+  logs[exIdx][setIdx][field] = value;
+
+  const timerKey = `${exIdx}_${setIdx}`;
+  if (debounceTimers[timerKey]) clearTimeout(debounceTimers[timerKey]);
+  debounceTimers[timerKey] = setTimeout(async () => {
+    if (isConfigured) {
+      try {
+        const { upsertSet } = await import('./api.js');
+        const workout = (state.currentPlan.workouts || []).find(w => w.day === state.currentDay);
+        const exName = workout?.exercises[exIdx]?.name || '';
+        const sl = logs[exIdx][setIdx];
+        await upsertSet(state.userId, state.currentPlanId, state.currentDay, exIdx, setIdx, exName, sl.weight, sl.reps);
+      } catch (e) {
+        showToast('Failed to save set', 'error');
+      }
+    } else {
+      // Demo: save to localStorage
+      const all = getLocalLogs();
+      const key = `${state.currentPlanId}_${state.currentDay}`;
+      if (!all[key]) all[key] = {};
+      if (!all[key][exIdx]) all[key][exIdx] = {};
+      all[key][exIdx][setIdx] = logs[exIdx][setIdx];
+      saveLocalLogs(all);
+    }
+
+    // Start rest timer if both weight and reps are filled
+    const sl = logs[exIdx][setIdx];
+    if (sl.weight && sl.reps) {
+      const workout = (state.currentPlan.workouts || []).find(w => w.day === state.currentDay);
+      const ex = workout?.exercises[exIdx];
+      if (ex) {
+        const totalSets = ex.sets || 3;
+        const isLastSet = setIdx >= totalSets - 1;
+        const restStr = isLastSet ? (ex.restBetweenExercises || ex.restBetweenSets) : ex.restBetweenSets;
+        if (restStr) {
+          startRestTimer(exIdx, restStr, container);
+        }
+      }
+    }
+  }, 500);
+}
