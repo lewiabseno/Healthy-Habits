@@ -11,7 +11,12 @@ export async function onRequestGet(context) {
 
   let query = 'SELECT meal_key, checked FROM meal_checks WHERE plan_id = ? AND user_id = ?';
   const binds = [planId, userId];
-  if (day !== null) { query += ' AND day_index = ?'; binds.push(parseInt(day)); }
+  if (day !== null) {
+    const dayInt = parseInt(day);
+    if (isNaN(dayInt) || dayInt < 0 || dayInt > 6) return badRequest('day must be 0-6');
+    query += ' AND day_index = ?';
+    binds.push(dayInt);
+  }
   query += ' LIMIT 500';
 
   const { results } = await env.DB.prepare(query).bind(...binds).all();

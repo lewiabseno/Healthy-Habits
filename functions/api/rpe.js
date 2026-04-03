@@ -11,7 +11,7 @@ export async function onRequestGet(context) {
 
   let query = 'SELECT day_index, exercise_index, rpe FROM rpe_logs WHERE plan_id = ? AND user_id = ?';
   const binds = [planId, userId];
-  if (day !== null) { query += ' AND day_index = ?'; binds.push(parseInt(day)); }
+  if (day !== null) { const d = parseInt(day); if (isNaN(d) || d < 0 || d > 6) return badRequest('day must be 0-6'); query += ' AND day_index = ?'; binds.push(d); }
   query += ' LIMIT 500';
 
   const { results } = await env.DB.prepare(query).bind(...binds).all();
@@ -25,7 +25,8 @@ export async function onRequestPost(context) {
   if (!validateStr(planId, 64)) return badRequest('Invalid planId');
   if (!validateInt(dayIndex, 0, 6)) return badRequest('dayIndex must be 0-6');
   if (!validateInt(exerciseIndex, 0, 50)) return badRequest('Invalid exerciseIndex');
-  if (!validateStr(rpe, 4)) return badRequest('Invalid RPE value');
+  const validRpe = ['', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10'];
+  if (typeof rpe !== 'string' || !validRpe.includes(rpe)) return badRequest('RPE must be 6-10 (in 0.5 increments) or empty');
   if (!(await verifyPlanOwnership(env, planId, userId))) return badRequest('Plan not found');
 
   await env.DB.prepare(

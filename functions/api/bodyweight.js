@@ -15,13 +15,14 @@ export async function onRequestPost(context) {
 
   if (!validateDate(date)) return badRequest('Invalid date format');
   if (!validateNum(weight, 1, 999)) return badRequest('Weight must be 1-999');
+  const validUnit = (unit === 'kg') ? 'kg' : 'lbs';
 
   await env.DB.prepare(
     `INSERT INTO bodyweight_logs (user_id, recorded_date, weight, unit)
      VALUES (?, ?, ?, ?)
      ON CONFLICT(user_id, recorded_date)
      DO UPDATE SET weight = excluded.weight, unit = excluded.unit`
-  ).bind(userId, date, weight, unit || 'lbs').run();
+  ).bind(userId, date, weight, validUnit).run();
 
   return json({ ok: true });
 }

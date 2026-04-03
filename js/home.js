@@ -379,13 +379,15 @@ async function exportWeek(weekId) {
         <div class="modal-panel" style="max-width:500px;border-radius:16px 16px 0 0">
           <div class="modal-handle"></div>
           <div class="modal-title">Export Data</div>
-          <textarea class="modal-textarea" id="exportTextarea" readonly style="min-height:250px;font-size:12px">${json.replace(/</g, '&lt;')}</textarea>
+          <textarea class="modal-textarea" id="exportTextarea" readonly style="min-height:250px;font-size:12px"></textarea>
           <div class="modal-actions">
             <button class="modal-btn secondary" id="exportClose">Close</button>
             <button class="modal-btn primary" id="exportCopyBtn">Select All</button>
           </div>
         </div>
       </div>`;
+    // Set textarea value safely (not via innerHTML to prevent injection)
+    document.getElementById('exportTextarea').value = json;
     document.getElementById('exportClose').addEventListener('click', () => { container.innerHTML = ''; });
     document.getElementById('exportCopyBtn').addEventListener('click', () => {
       const ta = document.getElementById('exportTextarea');
