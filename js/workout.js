@@ -126,20 +126,13 @@ export async function renderWorkout(container) {
     <div class="day-pills">${pillsHtml}</div>
     ${bodyHtml}`;
 
-  // Ensure active pill is visible
+  // Center active pill
   const pillsEl = container.querySelector('.day-pills');
   if (pillsEl) {
     const activePill = container.querySelector('.day-pill.active');
     if (activePill) {
-      const pillLeft = activePill.offsetLeft - pillsEl.offsetLeft;
-      const pillRight = pillLeft + activePill.clientWidth;
-      const viewLeft = pillsEl.scrollLeft;
-      const viewRight = viewLeft + pillsEl.clientWidth;
-      // Only scroll if the active pill is not fully visible
-      if (pillLeft < viewLeft || pillRight > viewRight) {
-        const offset = pillLeft - (pillsEl.clientWidth / 2) + (activePill.clientWidth / 2);
-        pillsEl.scrollLeft = Math.max(0, offset);
-      }
+      const offset = activePill.offsetLeft - pillsEl.offsetLeft - (pillsEl.clientWidth / 2) + (activePill.clientWidth / 2);
+      pillsEl.scrollLeft = Math.max(0, offset);
     }
   }
 
