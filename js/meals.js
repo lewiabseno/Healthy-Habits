@@ -59,27 +59,25 @@ export async function renderMeals(container) {
     <div class="day-pills">${pillsHtml}</div>
     ${bodyHtml}`;
 
-  // Restore or init pill scroll position
+  // Ensure active pill is visible
   const pillsEl = container.querySelector('.day-pills');
   if (pillsEl) {
-    if (pillScrollPos != null) {
-      pillsEl.scrollLeft = pillScrollPos;
-    } else if (isInitialRender) {
-      const activePill = container.querySelector('.day-pill.active');
-      if (activePill) {
-        const offset = activePill.offsetLeft - pillsEl.offsetLeft - (pillsEl.clientWidth / 2) + (activePill.clientWidth / 2);
+    const activePill = container.querySelector('.day-pill.active');
+    if (activePill) {
+      const pillLeft = activePill.offsetLeft - pillsEl.offsetLeft;
+      const pillRight = pillLeft + activePill.clientWidth;
+      const viewLeft = pillsEl.scrollLeft;
+      const viewRight = viewLeft + pillsEl.clientWidth;
+      if (pillLeft < viewLeft || pillRight > viewRight) {
+        const offset = pillLeft - (pillsEl.clientWidth / 2) + (activePill.clientWidth / 2);
         pillsEl.scrollLeft = Math.max(0, offset);
       }
     }
-    isInitialRender = false;
   }
 
   // Day pill handlers
   container.querySelectorAll('.day-pill').forEach(btn => {
     btn.addEventListener('click', () => {
-      // Save scroll position before re-render
-      const pills = container.querySelector('.day-pills');
-      if (pills) pillScrollPos = pills.scrollLeft;
 
       const day = parseInt(btn.dataset.day);
       if (day === -1) {
