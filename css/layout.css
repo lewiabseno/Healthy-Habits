@@ -90,6 +90,7 @@
 .week-nav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -215,6 +216,7 @@
 .section-header {
   padding: 16px 16px 6px;
   background: var(--bg);
+  text-align: center;
 }
 
 .section-title {
