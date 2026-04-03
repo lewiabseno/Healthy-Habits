@@ -142,6 +142,48 @@ Tables: `weekly_plans`, `workout_logs`, `meal_checks`, `grocery_checks`, `bodywe
 - All log tables use upsert with unique constraints for idempotent writes
 - RPC function `get_personal_bests(p_user_id)` for the dashboard
 
+## Data Migration System
+
+The app uses a versioned migration system (`js/migrate.js`) to safely evolve the localStorage schema without breaking existing user data.
+
+**How it works:**
+1. `DATA_VERSION` constant tracks the current schema version
+2. On app load, `runMigrations()` compares stored version to current
+3. If behind, runs each migration function sequentially (v1→v2→v3...)
+4. If a migration fails, it stops and retries next load
+5. Version stored in `hh-data-version` localStorage key
+
+**When to add a migration:**
+- Renaming a localStorage key
+- Changing the structure of stored data
+- Adding required fields to existing data
+- Merging or splitting storage keys
+
+**How to add a migration:**
+1. Increment `DATA_VERSION` in `migrate.js`
+2. Add a function to the `migrations` object keyed by the new version number
+3. The function should read old data, transform it, and write it back
+
+**Never:**
+- Change the meaning of an existing localStorage key without a migration
+- Delete a key that existing code reads without a migration to move the data
+- Change the structure of `hh-weeks` entries without migrating
+
+## localStorage Schema (Demo Mode)
+
+| Key | Format | Description |
+|-----|--------|-------------|
+| `hh-data-version` | integer | Current data schema version |
+| `hh-weeks` | `[{ id, weekStart, label, planData }]` | All imported weekly plans |
+| `hh-workout-logs` | `{ "planId_dayIdx": { exIdx: { setIdx: { weight, reps } } } }` | Set-level workout data |
+| `hh-meal-checks` | `{ "planId_dayIdx": { mealKey: boolean } }` | Per-day meal check-offs |
+| `hh-grocery-checks` | `{ "planId": { "category_itemIdx": boolean } }` | Per-week grocery checks |
+| `hh-stretch-checks` | `{ "planId_dayIdx_type_stretchIdx": boolean }` | Warmup/cooldown completion |
+| `hh-rpe` | `{ "planId_dayIdx_rpe_exIdx": string }` | RPE rating per exercise |
+| `hh-day-notes` | `{ "planId_dayIdx_notes": string }` | Daily user notes |
+| `hh-bodyweight` | `[{ date, weight }]` | Bodyweight log entries |
+| `hh-bodyfat` | `[{ date, value }]` | Body fat % log entries |
+
 ## Key Conventions
 
 - All dates use Monday as day 0 through Sunday as day 6

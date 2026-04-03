@@ -1,11 +1,14 @@
 import { state } from './state.js';
 import { initRouter } from './router.js';
 import { initImport, loadDemoWeeks } from './import.js';
+import { runMigrations } from './migrate.js';
 import { SUPABASE_URL } from './config.js';
 
 const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
 
 async function init() {
+  // Run data migrations before anything else
+  runMigrations();
   if (isConfigured) {
     const { guardSession, signOut } = await import('./auth.js');
     const session = await guardSession();
