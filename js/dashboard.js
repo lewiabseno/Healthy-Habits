@@ -96,6 +96,16 @@ function renderDemoDashboard(container) {
 
     let bwChart = null;
 
+    const bwChartOpts = {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} lbs` } } },
+      scales: {
+        x: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y: { ticks: { color: '#8e8e93', font: { size: 11 }, callback: v => v + ' lbs' }, grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: false },
+      },
+    };
+
     function renderBwChart(days) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
@@ -103,25 +113,27 @@ function renderDemoDashboard(container) {
       const filtered = days >= 99999 ? bwData : bwData.filter(d => d.date >= cutoffStr);
       const chartData = filtered.length > 0 ? filtered : bwData;
 
-      if (bwChart) { bwChart.destroy(); charts = charts.filter(c => c !== bwChart); }
+      const newLabels = chartData.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+      const newData = chartData.map(d => d.weight);
+
+      if (bwChart) {
+        // Update in-place instead of destroying
+        bwChart.data.labels = newLabels;
+        bwChart.data.datasets[0].data = newData;
+        bwChart.update();
+        return;
+      }
       bwChart = new Chart(document.getElementById('bwDemoChart'), {
         type: 'line',
         data: {
-          labels: chartData.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+          labels: newLabels,
           datasets: [{
-            data: chartData.map(d => d.weight),
+            data: newData,
             borderColor: '#007aff', backgroundColor: 'rgba(0,122,255,0.1)',
             borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#007aff', fill: true, tension: 0.3,
           }]
         },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} lbs` } } },
-          scales: {
-            x: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-            y: { ticks: { color: '#8e8e93', font: { size: 11 }, callback: v => v + ' lbs' }, grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: false },
-          },
-        },
+        options: bwChartOpts,
       });
       charts.push(bwChart);
     }
@@ -184,14 +196,23 @@ function renderDemoDashboard(container) {
       });
       const weeks = Object.keys(byWeek).sort();
 
-      if (currentChart) { currentChart.destroy(); charts = charts.filter(c => c !== currentChart); }
+      const newLabels = weeks.map(w => formatDate(w));
+      const newData = weeks.map(w => byWeek[w]);
+
+      if (currentChart) {
+        // Update in-place
+        currentChart.data.labels = newLabels;
+        currentChart.data.datasets[0].data = newData;
+        currentChart.update();
+        return;
+      }
       if (weeks.length >= 1) {
         currentChart = new Chart(document.getElementById('exProgChart'), {
           type: 'line',
           data: {
-            labels: weeks.map(w => formatDate(w)),
+            labels: newLabels,
             datasets: [{
-              data: weeks.map(w => byWeek[w]),
+              data: newData,
               borderColor: '#007aff',
               backgroundColor: 'rgba(0,122,255,0.1)',
               borderWidth: 2.5,
@@ -203,6 +224,7 @@ function renderDemoDashboard(container) {
           },
           options: {
             responsive: true, maintainAspectRatio: false,
+            animation: { duration: 300 },
             plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} lbs` } } },
             scales: {
               x: { ticks: { color: '#8e8e93', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
