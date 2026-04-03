@@ -149,6 +149,7 @@ export async function renderHome(container) {
       <button class="home-import-btn" id="homeImportBtn">+ Import Week</button>
     </div>
     <div class="home-week-list">${weekSectionsHtml}</div>
+    ${isConfigured ? '<div style="padding:20px 12px"><button class="reset-btn" id="homeLogoutBtn">Log Out</button></div>' : ''}
     <div style="height:20px"></div>`;
 
   // Snapshot card navigation
@@ -167,6 +168,12 @@ export async function renderHome(container) {
       list.style.display = isHidden ? 'block' : 'none';
       arrow.textContent = isHidden ? '\u25B2' : '\u25BC';
     }
+  });
+
+  // Logout button
+  document.getElementById('homeLogoutBtn')?.addEventListener('click', async () => {
+    const { signOut } = await import('./auth.js');
+    await signOut();
   });
 
   // Import button

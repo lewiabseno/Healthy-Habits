@@ -32,8 +32,8 @@ function saveLocalGroceryChecks(all) { localStorage.setItem('hh-grocery-checks',
 export async function renderMeals(container) {
   const plan = state.currentPlan;
   if (!plan) {
-    container.innerHTML = `<div class="section-header"><div class="section-title">Meals</div><div class="section-subtitle">Tap to mark as eaten</div></div>
-      <div class="empty-state">No week imported yet.<br>Tap <b>+ Import</b> to add a weekly plan.</div>`;
+    container.innerHTML = `<div class="section-header"><div class="section-title">Meals</div><div class="section-subtitle">No week imported yet</div></div>
+      <div class="empty-state">Go to the <b>Home</b> tab to import a weekly plan.</div>`;
     return;
   }
 
@@ -55,7 +55,7 @@ export async function renderMeals(container) {
   }
 
   container.innerHTML = `
-    <div class="section-header"><div class="section-title">Meals</div><div class="section-subtitle">${showingPrep ? 'Grocery list for the week' : 'Tap to mark as eaten'}</div></div>
+    <div class="section-header"><div class="section-title">Meals</div><div class="section-subtitle">${state.currentPlan?.weekStart ? formatWeekRange(state.currentPlan.weekStart) : ''}${showingPrep ? ' \u00B7 Grocery list' : ''}</div></div>
     <div class="day-pills">${pillsHtml}</div>
     ${bodyHtml}`;
 

@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state, formatWeekRange } from './state.js';
 import { showToast } from './toast.js';
 import { SUPABASE_URL } from './config.js';
 
@@ -33,7 +33,7 @@ function saveLocalLogs(all) {
 export async function renderWorkout(container) {
   const plan = state.currentPlan;
   if (!plan) {
-    container.innerHTML = `<div class="section-header"><div class="section-title">Workout</div></div>
+    container.innerHTML = `<div class="section-header"><div class="section-title">Workout</div>${state.currentPlan?.weekStart ? `<div class="section-subtitle">${formatWeekRange(state.currentPlan.weekStart)}</div>` : ''}</div>
       <div class="empty-state">No week imported yet.<br>Tap <b>+ Import</b> to add a weekly plan.</div>`;
     return;
   }
@@ -122,7 +122,7 @@ export async function renderWorkout(container) {
   }
 
   container.innerHTML = `
-    <div class="section-header"><div class="section-title">Workout</div></div>
+    <div class="section-header"><div class="section-title">Workout</div>${state.currentPlan?.weekStart ? `<div class="section-subtitle">${formatWeekRange(state.currentPlan.weekStart)}</div>` : ''}</div>
     <div class="day-pills">${pillsHtml}</div>
     ${bodyHtml}`;
 
