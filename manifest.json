@@ -1,0 +1,17 @@
+{
+  "name": "Healthy Habits",
+  "short_name": "Habits",
+  "description": "Weekly workout, meal, and progress tracker",
+  "start_url": "/app.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007aff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
