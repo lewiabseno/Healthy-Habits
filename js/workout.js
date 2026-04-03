@@ -1,4 +1,4 @@
-import { state, formatWeekRange } from './state.js';
+import { state, formatWeekRange, getWeekPickerHtml, handleWeekSwitch } from './state.js';
 import { showToast } from './toast.js';
 import { SUPABASE_URL } from './config.js';
 
@@ -33,7 +33,7 @@ function saveLocalLogs(all) {
 export async function renderWorkout(container) {
   const plan = state.currentPlan;
   if (!plan) {
-    container.innerHTML = `<div class="section-header"><div class="section-title">Workout</div>${state.currentPlan?.weekStart ? `<div class="section-subtitle">${formatWeekRange(state.currentPlan.weekStart)}</div>` : ''}</div>
+    container.innerHTML = `<div class="section-header"><div class="section-title">Workout</div>${getWeekPickerHtml()}</div>
       <div class="empty-state">No week imported yet.<br>Tap <b>+ Import</b> to add a weekly plan.</div>`;
     return;
   }
@@ -122,7 +122,7 @@ export async function renderWorkout(container) {
   }
 
   container.innerHTML = `
-    <div class="section-header"><div class="section-title">Workout</div>${state.currentPlan?.weekStart ? `<div class="section-subtitle">${formatWeekRange(state.currentPlan.weekStart)}</div>` : ''}</div>
+    <div class="section-header"><div class="section-title">Workout</div>${getWeekPickerHtml()}</div>
     <div class="day-pills">${pillsHtml}</div>
     ${bodyHtml}`;
 
@@ -135,6 +135,11 @@ export async function renderWorkout(container) {
       pillsEl.scrollLeft = Math.max(0, offset);
     }
   }
+
+  // Week picker change
+  document.getElementById('inlineWeekSelect')?.addEventListener('change', (e) => {
+    handleWeekSwitch(e.target.value, renderWorkout, container);
+  });
 
   // Event handlers
   container.querySelectorAll('.day-pill').forEach(btn => {

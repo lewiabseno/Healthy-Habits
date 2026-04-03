@@ -41,3 +41,37 @@ export function formatWeekRange(mondayStr) {
     : sun.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   return `${mFmt} - ${sFmt}`;
 }
+
+export function getWeekPickerHtml() {
+  if (!state.currentPlan?.weekStart) return '';
+  const weeks = state.weeks || [];
+  if (weeks.length <= 1) {
+    return `<div class="section-subtitle">${formatWeekRange(state.currentPlan.weekStart)}</div>`;
+  }
+  const opts = weeks.map(w => {
+    const id = w.id || w.weekStart;
+    const label = w.label || formatWeekRange(w.weekStart || id);
+    return `<option value="${id}"${id === state.currentPlanId ? ' selected' : ''}>${label}</option>`;
+  }).join('');
+  return `<select class="inline-week-select" id="inlineWeekSelect">${opts}</select>`;
+}
+
+export async function handleWeekSwitch(weekId, renderFn, container) {
+  if (weekId === state.currentPlanId) return;
+  const { SUPABASE_URL } = await import('./config.js');
+  const isConfigured = SUPABASE_URL && !SUPABASE_URL.startsWith('YOUR_');
+  if (isConfigured) {
+    const { fetchPlan } = await import('./api.js');
+    const plan = await fetchPlan(weekId);
+    state.currentPlanId = weekId;
+    state.currentPlan = plan.plan_data;
+  } else {
+    const week = state.weeks.find(w => (w.id || w.weekStart) === weekId);
+    if (week) {
+      state.currentPlanId = weekId;
+      state.currentPlan = week.planData;
+    }
+  }
+  state.expandedExercise = null;
+  renderFn(container);
+}

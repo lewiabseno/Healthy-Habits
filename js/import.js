@@ -1,4 +1,4 @@
-import { state, formatWeekRange } from './state.js';
+import { state, formatWeekRange, getCurrentMonday } from './state.js';
 import { showToast } from './toast.js';
 import { SUPABASE_URL } from './config.js';
 import { renderCurrentTab } from './router.js';
@@ -220,8 +220,12 @@ export function loadDemoWeeks() {
   const weeks = JSON.parse(localStorage.getItem('hh-weeks') || '[]');
   state.weeks = weeks;
   if (weeks.length > 0) {
-    state.currentPlanId = weeks[0].id;
-    state.currentPlan = weeks[0].planData;
+    // Auto-select current week by date, fallback to most recent
+    const monday = getCurrentMonday();
+    const match = weeks.find(w => (w.weekStart || w.id) === monday);
+    const selected = match || weeks[0];
+    state.currentPlanId = selected.id || selected.weekStart;
+    state.currentPlan = selected.planData;
     updateWeekPicker();
   }
 }

@@ -1,4 +1,4 @@
-import { state, formatWeekRange } from './state.js';
+import { state, formatWeekRange, getWeekPickerHtml, handleWeekSwitch } from './state.js';
 import { showToast } from './toast.js';
 import { SUPABASE_URL } from './config.js';
 
@@ -55,7 +55,7 @@ export async function renderMeals(container) {
   }
 
   container.innerHTML = `
-    <div class="section-header"><div class="section-title">Meals</div><div class="section-subtitle">${state.currentPlan?.weekStart ? formatWeekRange(state.currentPlan.weekStart) : ''}${showingPrep ? ' \u00B7 Grocery list' : ''}</div></div>
+    <div class="section-header"><div class="section-title">Meals</div>${getWeekPickerHtml()}</div>
     <div class="day-pills">${pillsHtml}</div>
     ${bodyHtml}`;
 
@@ -68,6 +68,11 @@ export async function renderMeals(container) {
       pillsEl.scrollLeft = Math.max(0, offset);
     }
   }
+
+  // Week picker change
+  document.getElementById('inlineWeekSelect')?.addEventListener('change', (e) => {
+    handleWeekSwitch(e.target.value, renderMeals, container);
+  });
 
   // Day pill handlers
   container.querySelectorAll('.day-pill').forEach(btn => {

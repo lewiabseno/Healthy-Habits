@@ -198,31 +198,6 @@ export async function renderHome(container) {
     });
   });
 
-  // Week row click → switch to that week
-  container.querySelectorAll('.home-week-row').forEach(row => {
-    row.addEventListener('click', async () => {
-      const weekId = row.dataset.id;
-      if (weekId === state.currentPlanId) return;
-
-      if (isConfigured) {
-        const { fetchPlan } = await import('./api.js');
-        const plan = await fetchPlan(weekId);
-        state.currentPlanId = weekId;
-        state.currentPlan = plan.plan_data;
-      } else {
-        const week = state.weeks.find(w => (w.id || w.weekStart) === weekId);
-        if (week) {
-          state.currentPlanId = weekId;
-          state.currentPlan = week.planData;
-        }
-      }
-      // Update week picker
-      const sel = document.getElementById('weekSelect');
-      if (sel) sel.value = weekId;
-      showToast('Switched to ' + (row.querySelector('.home-week-label')?.textContent || weekId), 'success');
-      renderHome(container);
-    });
-  });
 }
 
 async function exportWeek(weekId) {
