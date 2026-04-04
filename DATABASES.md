@@ -11,9 +11,23 @@ Both store the same logical data. The production schema is the source of truth.
 
 ## D1 Schema (Production)
 
-All tables use `user_id TEXT` scoped to the authenticated user (from Cloudflare Access JWT email). IDs are 32-char random hex strings. Plan-linked tables use `ON DELETE CASCADE` foreign keys.
+All data tables use `user_id TEXT` scoped to the authenticated user (from Cloudflare Access JWT email). IDs are 32-char random hex strings. Plan-linked tables use `ON DELETE CASCADE` foreign keys.
 
 See `schema.sql` for the full CREATE statements.
+
+### users
+
+Auto-populated user registry. A row is created on first login and `last_seen_at` is updated on every API request.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT PK | User email (same value as `user_id` in all other tables) |
+| `email` | TEXT UNIQUE | User email |
+| `display_name` | TEXT | Optional friendly name (nullable) |
+| `created_at` | TEXT | ISO timestamp of first login |
+| `last_seen_at` | TEXT | ISO timestamp of most recent API request |
+
+**Notes**: Users are auto-registered by the auth middleware — no signup flow needed. The `id` and `email` are the same value (the email from the Cloudflare Access JWT). `display_name` is reserved for future use.
 
 ### weekly_plans
 

@@ -54,6 +54,16 @@ export async function onRequest(context) {
 
     context.data.userId = userId;
     context.data.userEmail = payload.email || null;
+
+    // Auto-register/update user in DB
+    try {
+      await env.DB.prepare(
+        `INSERT INTO users (id, email) VALUES (?, ?)
+         ON CONFLICT(id) DO UPDATE SET last_seen_at = datetime('now')`
+      ).bind(userId, payload.email || userId).run();
+    } catch (e) {
+      // Non-fatal — table might not exist yet
+    }
   }
 
   const response = await next();
