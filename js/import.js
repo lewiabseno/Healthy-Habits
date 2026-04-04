@@ -11,6 +11,9 @@ const errorEl = document.getElementById('importError');
 const submitBtn = document.getElementById('importSubmit');
 const cancelBtn = document.getElementById('importCancel');
 
+const statusEl = document.getElementById('importStatus');
+const fileInput = document.getElementById('importFileInput');
+
 export function initImport() {
   document.getElementById('importBtn')?.addEventListener('click', openModal);
   cancelBtn.addEventListener('click', closeModal);
@@ -21,6 +24,65 @@ export function initImport() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
   });
+
+  // File upload
+  fileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > MAX_IMPORT_SIZE) {
+      showError(`File too large (max ${MAX_IMPORT_SIZE / 1024}KB)`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      textarea.value = reader.result;
+      fileInput.value = '';
+      liveValidate();
+    };
+    reader.readAsText(file);
+  });
+
+  // Live validation on input
+  textarea?.addEventListener('input', debounce(liveValidate, 400));
+}
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+function liveValidate() {
+  const raw = textarea.value.trim();
+  if (!raw) {
+    setStatus('');
+    errorEl.classList.remove('show');
+    return;
+  }
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch (e) {
+    setStatus('invalid', 'Invalid JSON');
+    return;
+  }
+  const err = validate(json);
+  if (err) {
+    setStatus('invalid', err);
+  } else {
+    setStatus('valid', 'Valid plan \u2014 ready to import');
+    errorEl.classList.remove('show');
+  }
+}
+
+function setStatus(type, msg) {
+  if (!statusEl) return;
+  if (!type) { statusEl.textContent = ''; statusEl.className = 'import-status'; return; }
+  statusEl.textContent = msg || '';
+  statusEl.className = `import-status ${type}`;
+  if (type === 'invalid') {
+    errorEl.textContent = msg;
+    errorEl.classList.add('show');
+  }
 }
 
 function openModal() {

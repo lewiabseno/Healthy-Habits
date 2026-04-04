@@ -367,33 +367,129 @@ async function exportWeek(weekId) {
     })(),
   };
 
-  const json = JSON.stringify(exportData, null, 2);
-  try {
-    await navigator.clipboard.writeText(json);
-    showToast('Week data copied!', 'success');
-  } catch {
-    // Fallback
-    const container = document.getElementById('confirmContainer');
-    container.innerHTML = `
-      <div class="confirm-overlay" style="align-items:flex-end">
-        <div class="modal-panel" style="max-width:500px;border-radius:16px 16px 0 0">
-          <div class="modal-handle"></div>
-          <div class="modal-title">Export Data</div>
-          <textarea class="modal-textarea" id="exportTextarea" readonly style="min-height:250px;font-size:12px"></textarea>
-          <div class="modal-actions">
-            <button class="modal-btn secondary" id="exportClose">Close</button>
-            <button class="modal-btn primary" id="exportCopyBtn">Select All</button>
-          </div>
+  const jsonStr = JSON.stringify(exportData, null, 2);
+  const textStr = buildTextExport(exportData, plan);
+
+  // Show format picker modal
+  const container = document.getElementById('confirmContainer');
+  container.innerHTML = `
+    <div class="confirm-overlay" style="align-items:flex-end">
+      <div class="modal-panel" style="max-width:500px;border-radius:16px 16px 0 0;max-height:85vh">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Export Week</div>
+        <div class="export-format-toggle">
+          <button class="export-fmt-btn active" data-fmt="text">Text</button>
+          <button class="export-fmt-btn" data-fmt="json">JSON</button>
         </div>
-      </div>`;
-    // Set textarea value safely (not via innerHTML to prevent injection)
-    document.getElementById('exportTextarea').value = json;
-    document.getElementById('exportClose').addEventListener('click', () => { container.innerHTML = ''; });
-    document.getElementById('exportCopyBtn').addEventListener('click', () => {
-      const ta = document.getElementById('exportTextarea');
-      ta.select();
-      ta.setSelectionRange(0, ta.value.length);
-      showToast('Text selected \u2014 press Ctrl+C to copy', 'success');
+        <textarea class="modal-textarea" id="exportTextarea" readonly style="min-height:220px;font-size:12px"></textarea>
+        <div class="modal-actions">
+          <button class="modal-btn secondary" id="exportClose">Close</button>
+          <button class="modal-btn primary" id="exportCopyBtn">Copy to Clipboard</button>
+        </div>
+      </div>
+    </div>`;
+
+  const textarea = document.getElementById('exportTextarea');
+  textarea.value = textStr; // Default to text format
+
+  // Format toggle
+  container.querySelectorAll('.export-fmt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.export-fmt-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      textarea.value = btn.dataset.fmt === 'json' ? jsonStr : textStr;
     });
+  });
+
+  document.getElementById('exportClose').addEventListener('click', () => { container.innerHTML = ''; });
+  document.getElementById('exportCopyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+      showToast('Copied to clipboard!', 'success');
+      container.innerHTML = '';
+    } catch {
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      showToast('Text selected \u2014 press Ctrl+C to copy', 'success');
+    }
+  });
+}
+
+function buildTextExport(data, plan) {
+  const lines = [];
+  lines.push(`Week: ${esc(data.weekLabel)}`);
+  lines.push(`Exported: ${new Date(data.exportedAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`);
+  lines.push('');
+
+  // Body metrics
+  const bm = data.bodyMetrics;
+  if (bm) {
+    const parts = [];
+    if (bm.currentWeight) parts.push(`Weight: ${bm.currentWeight} lbs${bm.weeklyWeightChange != null ? ` (${bm.weeklyWeightChange > 0 ? '+' : ''}${bm.weeklyWeightChange} lbs)` : ''}`);
+    if (bm.currentBodyFat) parts.push(`Body Fat: ${bm.currentBodyFat}%${bm.weeklyBodyFatChange != null ? ` (${bm.weeklyBodyFatChange > 0 ? '+' : ''}${bm.weeklyBodyFatChange}%)` : ''}`);
+    if (parts.length) {
+      lines.push(parts.join(' | '));
+      lines.push('');
+    }
   }
+
+  // Workouts
+  if (data.workoutSummary?.length > 0) {
+    lines.push('=== WORKOUTS ===');
+    lines.push('');
+    for (const day of data.workoutSummary) {
+      lines.push(`${day.dayName.toUpperCase()} \u2014 ${day.title}`);
+      if (day.notes) lines.push(`Notes: ${day.notes}`);
+
+      for (const ex of day.exercises) {
+        const equipLabel = ex.equipment ? ` (${ex.equipment})` : '';
+        const setsLogged = ex.logged?.length || 0;
+        const target = `${ex.targetSets}\u00D7${ex.targetReps}`;
+        lines.push(`  \u2022 ${ex.name}${equipLabel} \u2014 Target: ${target}`);
+
+        if (ex.logged?.length > 0) {
+          const setStrs = ex.logged.map((s, i) => {
+            const w = s.weight != null ? `${s.weight} lbs` : '\u2014';
+            const r = s.reps != null ? `${s.reps}` : '\u2014';
+            return `S${i + 1}: ${w} \u00D7 ${r}`;
+          });
+          let setLine = '    ' + setStrs.join('  ');
+          if (ex.rpe) setLine += `  RPE: ${ex.rpe}`;
+          lines.push(setLine);
+        } else {
+          lines.push('    (not logged)');
+        }
+      }
+
+      if (day.warmup?.length > 0) {
+        const wuParts = day.warmup.map(s => `${s.completed ? '\u2713' : '\u2717'} ${s.name}`);
+        lines.push(`  Warmup: ${wuParts.join(', ')}`);
+      }
+      if (day.cooldown?.length > 0) {
+        const cdParts = day.cooldown.map(s => `${s.completed ? '\u2713' : '\u2717'} ${s.name}`);
+        lines.push(`  Cooldown: ${cdParts.join(', ')}`);
+      }
+      lines.push('');
+    }
+  }
+
+  // Meals
+  if (data.mealsSummary && Object.keys(data.mealsSummary).length > 0) {
+    lines.push('=== MEALS ===');
+    lines.push('');
+    for (const [dayName, dayData] of Object.entries(data.mealsSummary)) {
+      const total = (dayData.eaten?.length || 0) + (dayData.skipped?.length || 0);
+      const eaten = dayData.eaten?.length || 0;
+      lines.push(`${dayName.toUpperCase()} (${eaten}/${total} eaten, ${dayData.caloriesEaten || 0} cal, ${dayData.proteinEaten || 0}g protein)`);
+      if (dayData.eaten?.length > 0) {
+        for (const m of dayData.eaten) lines.push(`  \u2713 ${m}`);
+      }
+      if (dayData.skipped?.length > 0) {
+        for (const m of dayData.skipped) lines.push(`  \u2717 ${m} (skipped)`);
+      }
+      lines.push('');
+    }
+  }
+
+  return lines.join('\n');
 }

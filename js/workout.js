@@ -128,7 +128,8 @@ export async function renderWorkout(container) {
       const tipText = workout.tip || workout.note || '';
       contentHtml = `
         ${tipText ? `<div class="note-card">${esc(tipText)}</div>` : ''}
-        <div class="card-group">${renderExercises(workout, state.currentDay)}</div>`;
+        <div class="card-group">${renderExercises(workout, state.currentDay)}</div>
+        <button class="add-item-btn" id="addExerciseBtn">+ Add Exercise</button>`;
     }
 
     let dayNotes = '';
@@ -259,6 +260,21 @@ export async function renderWorkout(container) {
       renderWorkout(container);
     });
   }
+
+  // Edit exercise buttons
+  container.querySelectorAll('[data-edit-ex]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const { openEditExercise } = await import('./edit-exercise.js');
+      openEditExercise(state.currentDay, parseInt(btn.dataset.editEx), () => renderWorkout(container));
+    });
+  });
+
+  // Add exercise button
+  document.getElementById('addExerciseBtn')?.addEventListener('click', async () => {
+    const { openEditExercise } = await import('./edit-exercise.js');
+    openEditExercise(state.currentDay, -1, () => renderWorkout(container));
+  });
 
   // Sub-tab handlers
   container.querySelectorAll('.workout-subtab').forEach(btn => {
@@ -518,6 +534,7 @@ function renderExercises(workout, dayIndex) {
         </div>
         <div class="ex-right">
           <span class="ex-reps-label">${esc(ex.sets)} \u00D7 ${esc(ex.reps)}</span>
+          <button class="edit-icon-btn" data-edit-ex="${exIdx}" title="Edit">\u270E</button>
           <span class="ex-arrow">${isExpanded ? '\u25B2' : '\u25BC'}</span>
         </div>
       </div>

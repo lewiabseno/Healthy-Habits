@@ -71,7 +71,12 @@
   <div class="modal-panel">
     <div class="modal-handle"></div>
     <div class="modal-title">Import Weekly Plan</div>
-    <textarea class="modal-textarea" id="importJson" placeholder="Paste your weekly plan JSON here..."></textarea>
+    <div class="import-upload-row">
+      <label class="import-upload-btn" for="importFileInput">Upload .json file</label>
+      <input type="file" id="importFileInput" accept=".json,application/json" style="display:none">
+      <span class="import-status" id="importStatus"></span>
+    </div>
+    <textarea class="modal-textarea" id="importJson" placeholder="Or paste your weekly plan JSON here..."></textarea>
     <div class="modal-error" id="importError"></div>
     <div class="modal-actions">
       <button class="modal-btn secondary" id="importCancel" type="button">Cancel</button>

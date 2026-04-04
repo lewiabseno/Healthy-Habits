@@ -738,6 +738,163 @@
   border-color: var(--accent-light);
 }
 
+/* Edit form (shared by exercise/meal editors) */
+.edit-form {
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 2px 0 8px;
+}
+
+.edit-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin: 10px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.edit-label:first-child {
+  margin-top: 0;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--bg);
+  font-family: inherit;
+  min-height: 42px;
+  -webkit-appearance: none;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--card);
+}
+
+.edit-row {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-col {
+  flex: 1;
+}
+
+/* Edit button on cards */
+.edit-icon-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-quaternary);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.edit-icon-btn:active {
+  background: var(--bg);
+}
+
+.add-item-btn {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 8px 12px;
+  padding: 12px;
+  border: 1.5px dashed var(--text-quaternary);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+}
+
+/* Import upload row */
+.import-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.import-upload-btn {
+  display: inline-block;
+  padding: 9px 16px;
+  border: 1.5px dashed var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  min-height: 40px;
+  line-height: 20px;
+}
+
+.import-upload-btn:active {
+  opacity: 0.7;
+}
+
+.import-status {
+  font-size: 12px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.import-status.valid {
+  color: var(--green-text);
+}
+
+.import-status.invalid {
+  color: var(--red-text);
+}
+
+/* Export format toggle */
+.export-format-toggle {
+  display: flex;
+  background: #e5e5ea;
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  margin-bottom: 12px;
+}
+
+.export-fmt-btn {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+}
+
+.export-fmt-btn.active {
+  background: var(--card);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
 /* Meal cards */
 .meal-card {
   background: var(--card);

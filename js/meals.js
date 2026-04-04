@@ -161,6 +161,21 @@ export async function renderMeals(container) {
     });
   }
 
+  // Edit meal buttons
+  container.querySelectorAll('[data-edit-meal]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const { openEditMeal } = await import('./edit-meal.js');
+      openEditMeal(btn.dataset.editMeal, () => renderMeals(container));
+    });
+  });
+
+  // Add meal button
+  document.getElementById('addMealBtn')?.addEventListener('click', async () => {
+    const { openEditMeal } = await import('./edit-meal.js');
+    openEditMeal(null, () => renderMeals(container));
+  });
+
   // Meal handlers (only when showing meals)
   if (!showingPrep) {
     // Checkbox: toggle eaten
@@ -341,6 +356,7 @@ async function renderMealDay() {
             ${fat != null ? `<span><b>${fat}g</b> fat</span>` : ''}
           </div>
         </div>
+        <button class="edit-icon-btn" data-edit-meal="${esc(key)}" title="Edit">\u270E</button>
         ${hasRecipe ? `<span class="meal-expand-arrow">${isExpanded ? '\u25B2' : '\u25BC'}</span>` : ''}
       </div>
       ${recipeHtml}
@@ -363,7 +379,8 @@ async function renderMealDay() {
     <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
     <div class="progress-label">${done} of ${mealKeys.length} meals eaten</div>
     ${totalsHtml}
-    <div class="meal-card">${mealsHtml}</div>`;
+    <div class="meal-card">${mealsHtml}</div>
+    <button class="add-item-btn" id="addMealBtn">+ Add Meal</button>`;
 }
 
 function getBodyweightWidget() {
