@@ -4,6 +4,9 @@ import { IS_PRODUCTION } from './config.js';
 import { renderCurrentTab } from './router.js';
 import { esc, escAttr } from './sanitize.js';
 import { validateMealCollection, validateMealOverrides } from './plan-validation.js';
+import { normalize } from './import-normalize.js';
+import { validateSmart } from './import-validate.js';
+import { showPreview } from './import-preview.js';
 
 const overlay = document.getElementById('importModal');
 const textarea = document.getElementById('importJson');
@@ -69,7 +72,7 @@ function liveValidate() {
   if (err) {
     setStatus('invalid', err);
   } else {
-    setStatus('valid', 'Valid plan \u2014 ready to import');
+    setStatus('valid', 'Valid plan \u2014 click Import to preview');
     errorEl.classList.remove('show');
   }
 }
@@ -91,6 +94,7 @@ function openModal() {
   errorEl.classList.remove('show');
   submitBtn.disabled = false;
   submitBtn.textContent = 'Import';
+  setStatus('');
   overlay.classList.add('open');
   setTimeout(() => textarea.focus(), 300);
 }
@@ -104,6 +108,7 @@ function showError(msg) {
   errorEl.classList.add('show');
 }
 
+// --- Original validation (kept for live status indicator) ---
 function validate(json) {
   if (!json || typeof json !== 'object') return 'Invalid JSON object';
 
@@ -163,7 +168,8 @@ function validate(json) {
   return null;
 }
 
-const MAX_IMPORT_SIZE = 100 * 1024; // 100KB
+// --- New preview-based import flow ---
+const MAX_IMPORT_SIZE = 100 * 1024;
 
 async function handleImport() {
   errorEl.classList.remove('show');
@@ -185,71 +191,122 @@ async function handleImport() {
     return;
   }
 
-  const err = validate(json);
-  if (err) {
-    showError(err);
-    return;
+  // Normalize
+  const { normalized, repairs } = normalize(json);
+
+  // Smart validate
+  const validation = validateSmart(normalized, 'full');
+
+  // Fetch existing plan for this weekStart
+  let existingPlan = null;
+  let existingId = null;
+
+  if (normalized.weekStart) {
+    try {
+      if (IS_PRODUCTION) {
+        const { findWeekByDate, fetchPlan } = await import('./api.js');
+        const existing = await findWeekByDate(normalized.weekStart);
+        if (existing) {
+          existingId = existing.id;
+          const full = await fetchPlan(existing.id);
+          existingPlan = full.plan_data;
+        }
+      } else {
+        const weeks = JSON.parse(localStorage.getItem('hh-weeks') || '[]');
+        const existing = weeks.find(w => w.weekStart === normalized.weekStart);
+        if (existing) {
+          existingId = existing.id || existing.weekStart;
+          existingPlan = existing.planData;
+        }
+      }
+    } catch (e) {
+      // Non-fatal — just skip diff
+    }
   }
 
+  // Show preview
+  showPreview({
+    normalized,
+    repairs,
+    validation,
+    existingPlan,
+    existingId,
+    onConfirm: (mode) => doImport(normalized, mode, existingPlan, existingId),
+    onCancel: () => { /* user cancelled preview, stay on textarea */ },
+  });
+}
+
+async function doImport(normalized, mode, existingPlan, existingId) {
   submitBtn.disabled = true;
   submitBtn.textContent = 'Importing...';
 
   try {
+    // Build the final plan data
+    let planData;
+    if (mode === 'full') {
+      planData = normalized;
+    } else {
+      // Partial import: merge selected section into existing (or create minimal)
+      planData = existingPlan ? structuredClone(existingPlan) : {
+        weekStart: normalized.weekStart,
+        workouts: [],
+        meals: {},
+        grocery: {},
+      };
+      // Ensure weekStart from the import
+      planData.weekStart = normalized.weekStart;
+
+      if (mode === 'workouts') {
+        planData.workouts = normalized.workouts || [];
+      } else if (mode === 'meals') {
+        planData.meals = normalized.meals || {};
+        planData.mealOverrides = normalized.mealOverrides;
+      } else if (mode === 'grocery') {
+        planData.grocery = normalized.grocery || {};
+      }
+    }
+
+    const label = formatWeekRange(normalized.weekStart);
+
     if (IS_PRODUCTION) {
-      const { createWeek, updateWeek, findWeekByDate } = await import('./api.js');
-      const existing = await findWeekByDate(json.weekStart);
-      if (existing) {
-        const overwrite = await confirmOverwrite(json.weekStart);
-        if (!overwrite) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Import';
-          return;
-        }
-        await updateWeek(existing.id, json, formatWeekRange(json.weekStart));
+      const { createWeek, updateWeek } = await import('./api.js');
+      if (existingId) {
+        await updateWeek(existingId, planData, label);
         showToast('Week updated!', 'success');
       } else {
-        await createWeek(json.weekStart, formatWeekRange(json.weekStart), json);
+        await createWeek(normalized.weekStart, label, planData);
         showToast('Week imported!', 'success');
       }
       closeModal();
       const { loadWeeks } = await import('./weeks.js');
       await loadWeeks();
     } else {
-      // Demo mode: store in localStorage
+      // Demo mode
       const weeks = JSON.parse(localStorage.getItem('hh-weeks') || '[]');
-      const idx = weeks.findIndex(w => w.weekStart === json.weekStart);
+      const idx = weeks.findIndex(w => w.weekStart === normalized.weekStart);
       const entry = {
-        id: json.weekStart,
-        weekStart: json.weekStart,
-        label: formatWeekRange(json.weekStart),
-        planData: json,
+        id: normalized.weekStart,
+        weekStart: normalized.weekStart,
+        label,
+        planData,
       };
       if (idx >= 0) {
-        const overwrite = await confirmOverwrite(json.weekStart);
-        if (!overwrite) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Import';
-          return;
-        }
         weeks[idx] = entry;
       } else {
         weeks.unshift(entry);
       }
       localStorage.setItem('hh-weeks', JSON.stringify(weeks));
 
-      // Update state — keep current week, just refresh the list
       state.weeks = weeks;
-      // If no week was selected, select the new one
       if (!state.currentPlanId) {
         state.currentPlanId = entry.id;
-        state.currentPlan = json;
+        state.currentPlan = planData;
       }
-      // If overwriting the current week, update its plan data
       if (state.currentPlanId === entry.id) {
-        state.currentPlan = json;
+        state.currentPlan = planData;
       }
       updateWeekPicker();
-      showToast('Week imported!', 'success');
+      showToast(existingId ? 'Week updated!' : 'Week imported!', 'success');
       closeModal();
       renderCurrentTab();
     }
@@ -261,8 +318,10 @@ async function handleImport() {
   submitBtn.textContent = 'Import';
 }
 
+// --- Week picker (demo mode) ---
 function updateWeekPicker() {
   const pickerEl = document.getElementById('weekPicker');
+  if (!pickerEl) return;
   if (state.weeks.length === 0) {
     pickerEl.innerHTML = '<span style="font-size:13px;color:var(--text-tertiary)">No weeks yet</span>';
     return;
@@ -285,12 +344,10 @@ function updateWeekPicker() {
   });
 }
 
-// Also load demo weeks on init if in demo mode
 export function loadDemoWeeks() {
   const weeks = JSON.parse(localStorage.getItem('hh-weeks') || '[]');
   state.weeks = weeks;
   if (weeks.length > 0) {
-    // Auto-select current week by date, fallback to most recent
     const monday = getCurrentMonday();
     const match = weeks.find(w => (w.weekStart || w.id) === monday);
     const selected = match || weeks[0];
@@ -298,31 +355,4 @@ export function loadDemoWeeks() {
     state.currentPlan = selected.planData;
     updateWeekPicker();
   }
-}
-
-function confirmOverwrite(weekStart) {
-  return new Promise(resolve => {
-    const container = document.getElementById('confirmContainer');
-    container.innerHTML = `
-      <div class="confirm-overlay">
-        <div class="confirm-box">
-          <div class="confirm-body">
-            <div class="confirm-title">Week Exists</div>
-            <div class="confirm-message">A plan for week of ${esc(weekStart)} already exists. Overwrite it?</div>
-          </div>
-          <div class="confirm-actions">
-            <button class="confirm-btn cancel" id="confirmNo">Cancel</button>
-            <button class="confirm-btn destructive" id="confirmYes">Overwrite</button>
-          </div>
-        </div>
-      </div>`;
-    document.getElementById('confirmNo').addEventListener('click', () => {
-      container.innerHTML = '';
-      resolve(false);
-    });
-    document.getElementById('confirmYes').addEventListener('click', () => {
-      container.innerHTML = '';
-      resolve(true);
-    });
-  });
 }
